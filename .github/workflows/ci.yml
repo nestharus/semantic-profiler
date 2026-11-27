@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache Cargo registry and target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Verify zero embedded-SQL dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE 'rusqlite|libsqlite3|sqlite' Cargo.toml Cargo.lock src tests; then
+            echo "error: forbidden SQLite dependency or reference detected" >&2
+            exit 1
+          fi
+
+      - name: Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: CLI --help smoke check
+        shell: bash
+        run: |
+          set -euo pipefail
+          for args in "--help" "check --help" "scan --help" "delta --help"; do
+            # shellcheck disable=SC2086
+            OUT="$(cargo run --locked -- ${args})"
+            printf '%s\n' "${OUT}" | grep -q "semantic-profiler check"
+            printf '%s\n' "${OUT}" | grep -q "semantic-profiler scan"
+            printf '%s\n' "${OUT}" | grep -q "semantic-profiler delta"
+          done
+
+      - name: Self-dogfooding semantic budget check
+        run: cargo run --locked -- check . --require-profile --base semantic-baseline.json
+
+      - name: Exercise composite GitHub Action
+        uses: ./
+        with:
+          path: .
+          baseline: semantic-baseline.json
+          require-profile: "true"

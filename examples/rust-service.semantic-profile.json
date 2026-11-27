@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "domain_vocabulary": [
+    "handler",
+    "service",
+    "repository",
+    "codec"
+  ],
+  "cohesive_data_globs": [
+    "src/tables/*.rs"
+  ],
+  "flat_dispatcher_globs": [
+    "src/dispatch.rs"
+  ],
+  "test_globs": [
+    "tests/**",
+    "benches/**",
+    "**/*_test.rs"
+  ],
+  "ignore_globs": [
+    "generated/**"
+  ],
+  "layers": [
+    {
+      "name": "api",
+      "globs": [
+        "src/cli.rs",
+        "src/cli/**",
+        "src/http/**"
+      ]
+    },
+    {
+      "name": "service",
+      "globs": [
+        "src/service.rs",
+        "src/service/**"
+      ]
+    },
+    {
+      "name": "storage",
+      "globs": [
+        "src/store.rs",
+        "src/storage/**"
+      ]
+    }
+  ],
+  "allowed_edges": [
+    {
+      "from": "api",
+      "to": "service"
+    },
+    {
+      "from": "service",
+      "to": "storage"
+    }
+  ],
+  "forbidden_bypasses": [
+    {
+      "from": "api",
+      "to": "storage"
+    }
+  ],
+  "budgets": {
+    "max_hotspot_score": 450.0,
+    "max_prod_fn_loc": 250,
+    "max_blanket_suppressions": 0,
+    "max_scc_count": 0,
+    "max_bypass_count": 0,
+    "max_smeared_write_count": 0
+  }
+}

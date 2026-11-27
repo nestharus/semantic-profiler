@@ -1,0 +1,13 @@
+#!/bin/sh
+# Native semantic-profiler launcher; runs the compiled binary placed beside this script.
+DIR="$(dirname "$0")"
+if [ -x "$DIR/semantic-profiler.exe" ]; then
+  exec "$DIR/semantic-profiler.exe" "$@"
+elif [ -x "$DIR/target/release/semantic-profiler" ]; then
+  exec "$DIR/target/release/semantic-profiler" "$@"
+elif [ -x "$DIR/target/release/semantic-profiler.exe" ]; then
+  exec "$DIR/target/release/semantic-profiler.exe" "$@"
+else
+  echo "error: semantic-profiler binary not found beside $0 (build with: cargo build --release --locked)" >&2
+  exit 127
+fi

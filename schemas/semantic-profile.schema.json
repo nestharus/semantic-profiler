@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/nestharus/semantic-profiler/main/schemas/semantic-profile.schema.json",
+  "title": "Semantic Profiler Repository Profile",
+  "description": "Declarative per-repository calibration, architectural layer rules, and CI budget thresholds for semantic-profiler.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "description": "Profile schema version (currently 1, or null/omitted).",
+      "anyOf": [
+        {
+          "type": "integer",
+          "const": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "domain_vocabulary": {
+      "description": "Domain-specific terms surfaced in CRW handoff packets to orient reviewers.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": []
+    },
+    "cohesive_data_globs": {
+      "description": "Glob patterns for cohesive static data/lookup tables dampened from hotspot scoring (unless they contain blanket suppressions).",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": []
+    },
+    "flat_dispatcher_globs": {
+      "description": "Glob patterns for shallow exhaustive match/opcode dispatchers dampened from hotspot scoring (when max_nesting_depth <= 3 and no blanket suppressions).",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": []
+    },
+    "test_globs": {
+      "description": "Additional glob patterns classified as test files and excluded from production hotspot, topology, and write-sink metrics.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": []
+    },
+    "ignore_globs": {
+      "description": "Glob patterns for directories or files excluded completely from discovery.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": []
+    },
+    "layers": {
+      "description": "Ordered architectural layers/strata from highest (entry/CLI/API) to lowest (storage/core). Mutually exclusive with the 'strata' alias.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LayerSpec"
+      },
+      "default": []
+    },
+    "strata": {
+      "description": "Alias for 'layers'. Do not specify both 'layers' and 'strata' in the same file.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LayerSpec"
+      },
+      "default": []
+    },
+    "allowed_edges": {
+      "description": "Explicit allow-list of cross-layer dependencies. When non-empty, cross-layer edges into non-leaf modules outside this list are flagged as declared_stratum_violation.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LayerEdgeRule"
+      },
+      "default": []
+    },
+    "forbidden_bypasses": {
+      "description": "Explicit deny-list of cross-layer shortcuts flagged as declared_forbidden_bypass.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LayerEdgeRule"
+      },
+      "default": []
+    },
+    "budgets": {
+      "description": "Optional CI/linter thresholds evaluated by `semantic-profiler check` and `semantic-profiler delta --fail-on-budget`.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SemanticBudgets"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "not": {
+    "required": ["layers", "strata"]
+  },
+  "$defs": {
+    "LayerSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "globs"],
+      "properties": {
+        "name": {
+          "description": "Unique non-empty layer identifier.",
+          "type": "string",
+          "minLength": 1
+        },
+        "globs": {
+          "description": "One or more non-empty repository-relative globs matching files in this layer.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        }
+      }
+    },
+    "LayerEdgeRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "from": {
+          "description": "Source layer name (must match a declared entry in layers/strata).",
+          "type": "string",
+          "minLength": 1
+        },
+        "to": {
+          "description": "Destination layer name (must match a declared entry in layers/strata).",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "SemanticBudgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_hotspot_score": {
+          "description": "Maximum allowed dampened hotspot_score for any single production file (finite, non-negative, or null).",
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "max_prod_fn_loc": {
+          "description": "Maximum allowed lines of code for any single production function in an undampened file (or null).",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "max_blanket_suppressions": {
+          "description": "Maximum allowed blanket lint suppressions across production files (or null).",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "max_scc_count": {
+          "description": "Maximum allowed circular dependency clusters (Tarjan SCCs with |SCC| >= 2) across production files (or null).",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "max_bypass_count": {
+          "description": "Maximum allowed layer/facade bypasses, shortcut triangles, and cross-boundary reach-ins (or null).",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "max_smeared_write_count": {
+          "description": "Maximum allowed persistent write targets mutated by two or more distinct production modules (or null).",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "max_phantom_coupling_count": {
+          "description": "Maximum allowed production file pairs that co-change >= 2 times in git history without a direct import or mod edge (or null).",
+          "type": ["integer", "null"],
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

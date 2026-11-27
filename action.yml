@@ -1,0 +1,206 @@
+name: Semantic Profiler Check
+description: Build and run semantic-profiler check against a target repository to enforce semantic and architectural budgets.
+
+inputs:
+  path:
+    description: Repository or directory path to profile.
+    required: false
+    default: "."
+  profile:
+    description: Optional explicit path to a semantic-profile.json file.
+    required: false
+    default: ""
+  baseline:
+    description: Optional path to a baseline snapshot JSON for delta computation.
+    required: false
+    default: ""
+  window:
+    description: Rolling git log commit window for churn and co-change coupling (0 skips git history).
+    required: false
+    default: "100"
+  top:
+    description: Maximum hotspots and topology entries included in reports and packets.
+    required: false
+    default: "15"
+  require-profile:
+    description: Fail the check if no semantic-profile.json is found.
+    required: false
+    default: "false"
+  emit-crw-packet:
+    description: Optional output path for a Layer 2 CRW handoff packet JSON.
+    required: false
+    default: ""
+  emit-graph-edges:
+    description: Optional output path for a typed graph-edges export JSON.
+    required: false
+    default: ""
+  include-evals:
+    description: Include evals/ directories in the scan.
+    required: false
+    default: "false"
+
+outputs:
+  passed:
+    description: Whether all configured semantic budgets passed ('true' or 'false').
+    value: ${{ steps.run-check.outputs.passed }}
+  violation-count:
+    description: Number of budget violations reported.
+    value: ${{ steps.run-check.outputs.violation_count }}
+  scc-count:
+    description: Number of strongly connected component (cycle) clusters found.
+    value: ${{ steps.run-check.outputs.scc_count }}
+  bypass-count:
+    description: Number of layer/facade bypasses and reach-ins found.
+    value: ${{ steps.run-check.outputs.bypass_count }}
+  smeared-write-count:
+    description: Number of smeared persistent write targets found.
+    value: ${{ steps.run-check.outputs.smeared_write_count }}
+  report-path:
+    description: Path to the JSON check report written by the action.
+    value: ${{ steps.run-check.outputs.report_path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Compute semantic-profiler build cache key
+      id: cache-key
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        PY_BIN="python"
+        if command -v python3 >/dev/null 2>&1 && python3 -c "import sys" >/dev/null 2>&1; then
+          PY_BIN="python3"
+        fi
+        "${PY_BIN}" - "${ACTION_PATH}" "${GITHUB_OUTPUT}" <<'PY'
+import hashlib, pathlib, sys
+
+root = pathlib.Path(sys.argv[1])
+gh_out = sys.argv[2]
+files = [root / "Cargo.toml", root / "Cargo.lock"]
+files.extend(sorted((root / "src").rglob("*.rs")))
+
+digest = hashlib.sha256()
+for path in files:
+    rel = path.relative_to(root).as_posix().encode("utf-8")
+    digest.update(rel)
+    digest.update(b"\0")
+    digest.update(path.read_bytes())
+    digest.update(b"\0")
+
+with open(gh_out, "a", encoding="utf-8") as out:
+    out.write(f"hash={digest.hexdigest()}\n")
+PY
+
+    - name: Cache semantic-profiler build
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          ${{ github.action_path }}/target
+        key: semantic-profiler-${{ runner.os }}-${{ steps.cache-key.outputs.hash }}
+        restore-keys: |
+          semantic-profiler-${{ runner.os }}-
+
+    - name: Build semantic-profiler
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      env:
+        CARGO_TARGET_DIR: ${{ github.action_path }}/target
+      run: cargo build --release --locked
+
+    - name: Run semantic-profiler check
+      id: run-check
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        CARGO_TARGET_DIR: ${{ github.action_path }}/target
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_PROFILE: ${{ inputs.profile }}
+        INPUT_BASELINE: ${{ inputs.baseline }}
+        INPUT_WINDOW: ${{ inputs.window }}
+        INPUT_TOP: ${{ inputs.top }}
+        INPUT_REQUIRE_PROFILE: ${{ inputs.require-profile }}
+        INPUT_EMIT_CRW_PACKET: ${{ inputs.emit-crw-packet }}
+        INPUT_EMIT_GRAPH_EDGES: ${{ inputs.emit-graph-edges }}
+        INPUT_INCLUDE_EVALS: ${{ inputs.include-evals }}
+      run: |
+        set -euo pipefail
+        BIN="${ACTION_PATH}/target/release/semantic-profiler"
+        if [ -f "${BIN}.exe" ]; then
+          BIN="${BIN}.exe"
+        fi
+
+        REPORT_PATH="$(mktemp "${RUNNER_TEMP}/semantic-profiler-check-report-XXXXXX.json")"
+        rm -f "${REPORT_PATH}"
+
+        ARGS=(check --window "${INPUT_WINDOW}" --top "${INPUT_TOP}" --json --output "${REPORT_PATH}")
+        if [ -n "${INPUT_PROFILE}" ]; then
+          ARGS+=(--profile "${INPUT_PROFILE}")
+        fi
+        if [ -n "${INPUT_BASELINE}" ]; then
+          ARGS+=(--base "${INPUT_BASELINE}")
+        fi
+        if [ "${INPUT_REQUIRE_PROFILE}" = "true" ]; then
+          ARGS+=(--require-profile)
+        fi
+        if [ -n "${INPUT_EMIT_CRW_PACKET}" ]; then
+          ARGS+=(--emit-crw-packet "${INPUT_EMIT_CRW_PACKET}")
+        fi
+        if [ -n "${INPUT_EMIT_GRAPH_EDGES}" ]; then
+          ARGS+=(--emit-graph-edges "${INPUT_EMIT_GRAPH_EDGES}")
+        fi
+        if [ "${INPUT_INCLUDE_EVALS}" = "true" ]; then
+          ARGS+=(--include-evals)
+        fi
+        ARGS+=(-- "${INPUT_PATH}")
+
+        set +e
+        "${BIN}" "${ARGS[@]}"
+        CHECK_EXIT=$?
+        set -e
+
+        if [ -f "${REPORT_PATH}" ]; then
+          PY_BIN="python"
+          if command -v python3 >/dev/null 2>&1 && python3 -c "import sys" >/dev/null 2>&1; then
+            PY_BIN="python3"
+          fi
+          "${PY_BIN}" - "${REPORT_PATH}" "${GITHUB_OUTPUT}" <<'PY'
+import json, sys
+
+report_path, gh_out = sys.argv[1], sys.argv[2]
+with open(report_path, "r", encoding="utf-8") as fh:
+    r = json.load(fh)
+
+status = "PASS" if r["passed"] else "FAIL"
+viols = r.get("budget_violations", [])
+s = r["summary"]
+print(f"semantic-profiler check: {status} ({len(viols)} budget violation(s))")
+print(f"  repo: {r['repo_label']} | prod_files={s['prod_files']} prod_loc={s['prod_loc']} top_hotspot={s['top_hotspot_score']:.2f}")
+print(f"  topology: sccs={s['scc_count']} bypasses={s['bypass_count']} smeared_writes={s['smeared_write_count']} phantoms={s['phantom_coupling_count']} blanket_suppressions={s['blanket_suppressions']}")
+for w in r.get("warnings", []):
+    print(f"  warning: {w}")
+for v in viols:
+    print(f"  violation: {v['rule']} on {v['target']}: {v['actual']} > {v['limit']}")
+
+with open(gh_out, "a", encoding="utf-8") as out:
+    out.write(f"passed={'true' if r['passed'] else 'false'}\n")
+    out.write(f"violation_count={len(viols)}\n")
+    out.write(f"scc_count={s['scc_count']}\n")
+    out.write(f"bypass_count={s['bypass_count']}\n")
+    out.write(f"smeared_write_count={s['smeared_write_count']}\n")
+    out.write(f"report_path={report_path}\n")
+PY
+        else
+          echo "passed=false" >> "${GITHUB_OUTPUT}"
+          echo "violation_count=0" >> "${GITHUB_OUTPUT}"
+          echo "scc_count=0" >> "${GITHUB_OUTPUT}"
+          echo "bypass_count=0" >> "${GITHUB_OUTPUT}"
+          echo "smeared_write_count=0" >> "${GITHUB_OUTPUT}"
+          echo "report_path=" >> "${GITHUB_OUTPUT}"
+        fi
+
+        exit "${CHECK_EXIT}"

@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "domain_vocabulary": [
+    "workspace",
+    "protocol",
+    "engine",
+    "cli"
+  ],
+  "cohesive_data_globs": [
+    "crates/*/src/tables/**"
+  ],
+  "flat_dispatcher_globs": [
+    "crates/*/src/dispatch.rs"
+  ],
+  "test_globs": [
+    "crates/*/tests/**",
+    "crates/*/benches/**",
+    "tests/**"
+  ],
+  "ignore_globs": [
+    "crates/*/generated/**",
+    "fixtures/**"
+  ],
+  "layers": [
+    {
+      "name": "cli",
+      "globs": [
+        "crates/app-cli/src/**"
+      ]
+    },
+    {
+      "name": "engine",
+      "globs": [
+        "crates/app-engine/src/**"
+      ]
+    },
+    {
+      "name": "protocol",
+      "globs": [
+        "crates/app-protocol/src/**"
+      ]
+    },
+    {
+      "name": "storage",
+      "globs": [
+        "crates/app-storage/src/**"
+      ]
+    }
+  ],
+  "allowed_edges": [
+    {
+      "from": "cli",
+      "to": "engine"
+    },
+    {
+      "from": "cli",
+      "to": "protocol"
+    },
+    {
+      "from": "engine",
+      "to": "protocol"
+    },
+    {
+      "from": "engine",
+      "to": "storage"
+    },
+    {
+      "from": "storage",
+      "to": "protocol"
+    }
+  ],
+  "forbidden_bypasses": [
+    {
+      "from": "cli",
+      "to": "storage"
+    }
+  ],
+  "budgets": {
+    "max_hotspot_score": 600.0,
+    "max_prod_fn_loc": 300,
+    "max_blanket_suppressions": 0,
+    "max_scc_count": 0,
+    "max_smeared_write_count": 0
+  }
+}

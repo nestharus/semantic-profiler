@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "domain_vocabulary": [
+    "snapshot",
+    "topology",
+    "hotspot",
+    "budget",
+    "delta",
+    "scc",
+    "bypass"
+  ],
+  "test_globs": [
+    "tests/**"
+  ],
+  "ignore_globs": [
+    "target/**"
+  ],
+  "budgets": {
+    "max_hotspot_score": 450.0,
+    "max_prod_fn_loc": 260,
+    "max_blanket_suppressions": 0,
+    "max_scc_count": 0,
+    "max_smeared_write_count": 0
+  }
+}

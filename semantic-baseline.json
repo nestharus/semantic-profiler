@@ -1,0 +1,2376 @@
+{
+  "schema_version": 1,
+  "repo_label": "trunk",
+  "commit": "a8c32713c34e5e8880b20a5dc889dec0c80f873e",
+  "git_available": true,
+  "git_window": 100,
+  "git_commits_scanned": 1,
+  "profile": {
+    "loaded_from": "semantic-profile.json",
+    "domain_vocabulary": [
+      "snapshot",
+      "topology",
+      "hotspot",
+      "budget",
+      "delta",
+      "scc",
+      "bypass"
+    ],
+    "cohesive_data_globs": [],
+    "flat_dispatcher_globs": [],
+    "layers": [],
+    "allowed_edges": [],
+    "forbidden_bypasses": [],
+    "budgets": {
+      "max_hotspot_score": 450.0,
+      "max_prod_fn_loc": 260,
+      "max_blanket_suppressions": 0,
+      "max_scc_count": 0,
+      "max_bypass_count": null,
+      "max_smeared_write_count": 0,
+      "max_phantom_coupling_count": null
+    }
+  },
+  "summary": {
+    "total_files": 15,
+    "prod_files": 14,
+    "test_files": 1,
+    "eval_files": 0,
+    "total_loc": 8530,
+    "prod_loc": 6357,
+    "test_and_eval_loc": 2173,
+    "est_prod_tokens": 47705,
+    "median_prod_loc": 260,
+    "p95_prod_loc": 1126,
+    "prod_files_over_1000_loc": 3,
+    "top_hotspot_score": 398.87,
+    "files_with_suppressions": 0,
+    "total_suppressions": 0,
+    "blanket_suppressions": 0,
+    "dampened_files": 0,
+    "scc_count": 0,
+    "bypass_count": 4,
+    "smeared_write_count": 0,
+    "phantom_coupling_count": 0
+  },
+  "topology": {
+    "sccs": [],
+    "bypasses": [
+      {
+        "kind": "shortcut_triangle",
+        "from": "src/cli.rs",
+        "via": "src/crw_packet.rs",
+        "to": "src/graph_topology.rs",
+        "detail": "direct shortcut src/cli.rs -> src/graph_topology.rs bypasses intermediary src/crw_packet.rs (+1 more) into non-leaf module (fan_out=2)"
+      },
+      {
+        "kind": "shortcut_triangle",
+        "from": "src/cli.rs",
+        "via": "src/crw_packet.rs",
+        "to": "src/scoring.rs",
+        "detail": "direct shortcut src/cli.rs -> src/scoring.rs bypasses intermediary src/crw_packet.rs (+1 more) into non-leaf module (fan_out=3)"
+      },
+      {
+        "kind": "shortcut_triangle",
+        "from": "src/crw_packet.rs",
+        "via": "src/scoring.rs",
+        "to": "src/graph_topology.rs",
+        "detail": "direct shortcut src/crw_packet.rs -> src/graph_topology.rs bypasses intermediary src/scoring.rs into non-leaf module (fan_out=2)"
+      },
+      {
+        "kind": "shortcut_triangle",
+        "from": "src/scoring.rs",
+        "via": "src/graph_topology.rs",
+        "to": "src/profile_config.rs",
+        "detail": "direct shortcut src/scoring.rs -> src/profile_config.rs bypasses intermediary src/graph_topology.rs into non-leaf module (fan_out=2)"
+      }
+    ],
+    "smeared_writes": [],
+    "top_nexus_nodes": [
+      {
+        "path": "src/scoring.rs",
+        "fan_in": 4,
+        "fan_out": 3,
+        "nexus_score": 12,
+        "transitive_dependents": 4,
+        "transitive_dependent_tokens": 10393,
+        "layer": null
+      },
+      {
+        "path": "src/profile_config.rs",
+        "fan_in": 4,
+        "fan_out": 2,
+        "nexus_score": 8,
+        "transitive_dependents": 7,
+        "transitive_dependent_tokens": 23590,
+        "layer": null
+      },
+      {
+        "path": "src/graph_topology.rs",
+        "fan_in": 4,
+        "fan_out": 2,
+        "nexus_score": 8,
+        "transitive_dependents": 5,
+        "transitive_dependent_tokens": 11942,
+        "layer": null
+      },
+      {
+        "path": "src/crw_packet.rs",
+        "fan_in": 1,
+        "fan_out": 3,
+        "nexus_score": 3,
+        "transitive_dependents": 1,
+        "transitive_dependent_tokens": 6246,
+        "layer": null
+      },
+      {
+        "path": "src/discovery.rs",
+        "fan_in": 1,
+        "fan_out": 3,
+        "nexus_score": 3,
+        "transitive_dependents": 1,
+        "transitive_dependent_tokens": 1283,
+        "layer": null
+      },
+      {
+        "path": "src/rust_ast.rs",
+        "fan_in": 2,
+        "fan_out": 1,
+        "nexus_score": 2,
+        "transitive_dependents": 2,
+        "transitive_dependent_tokens": 9739,
+        "layer": null
+      },
+      {
+        "path": "src/delta.rs",
+        "fan_in": 1,
+        "fan_out": 2,
+        "nexus_score": 2,
+        "transitive_dependents": 1,
+        "transitive_dependent_tokens": 6246,
+        "layer": null
+      },
+      {
+        "path": "src/text_analyzer.rs",
+        "fan_in": 1,
+        "fan_out": 2,
+        "nexus_score": 2,
+        "transitive_dependents": 1,
+        "transitive_dependent_tokens": 1283,
+        "layer": null
+      },
+      {
+        "path": "src/git_history.rs",
+        "fan_in": 1,
+        "fan_out": 1,
+        "nexus_score": 1,
+        "transitive_dependents": 1,
+        "transitive_dependent_tokens": 1283,
+        "layer": null
+      }
+    ],
+    "phantom_couplings": []
+  },
+  "files": [
+    {
+      "path": "src/cli.rs",
+      "language": "rust",
+      "role": "production",
+      "classification": "standard",
+      "sha256": "8abdad5bbaba536ebf21e55387b6af5ee72703d05c15254375107105a45cb41a",
+      "total_loc": 748,
+      "prod_loc": 748,
+      "inline_test_loc": 0,
+      "est_tokens": 6246,
+      "function_count": 16,
+      "max_fn_loc": 107,
+      "max_fn_name": "parse_check_args",
+      "max_nesting_depth": 3,
+      "max_param_count": 3,
+      "functions": [
+        {
+          "name": "run",
+          "start_line": 70,
+          "end_line": 90,
+          "loc": 21,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "take_path_value",
+          "start_line": 92,
+          "end_line": 104,
+          "loc": 13,
+          "param_count": 3,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "take_usize_value",
+          "start_line": 106,
+          "end_line": 116,
+          "loc": 11,
+          "param_count": 3,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "set_once",
+          "start_line": 118,
+          "end_line": 124,
+          "loc": 7,
+          "param_count": 3,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "parse_check_args",
+          "start_line": 126,
+          "end_line": 232,
+          "loc": 107,
+          "param_count": 1,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "run_check",
+          "start_line": 234,
+          "end_line": 337,
+          "loc": 104,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "short_commit",
+          "start_line": 339,
+          "end_line": 343,
+          "loc": 5,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "format_check_report",
+          "start_line": 345,
+          "end_line": 438,
+          "loc": 94,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "parse_scan_args",
+          "start_line": 440,
+          "end_line": 532,
+          "loc": 93,
+          "param_count": 1,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "run_scan",
+          "start_line": 534,
+          "end_line": 587,
+          "loc": 54,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "parse_delta_args",
+          "start_line": 589,
+          "end_line": 644,
+          "loc": 56,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "run_delta",
+          "start_line": 646,
+          "end_line": 681,
+          "loc": 36,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "read_snapshot",
+          "start_line": 683,
+          "end_line": 699,
+          "loc": 17,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "ensure_safe_output_path",
+          "start_line": 701,
+          "end_line": 721,
+          "loc": 21,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "write_text",
+          "start_line": 723,
+          "end_line": 732,
+          "loc": 10,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "append_line",
+          "start_line": 734,
+          "end_line": 748,
+          "loc": 15,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        }
+      ],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [
+        "ScanOptions",
+        "build_crw_packet",
+        "cap_topology_for_packet",
+        "compute_delta",
+        "evaluate_budgets",
+        "export_graph_edges",
+        "is_reparse_or_symlink",
+        "model",
+        "read_file_bounded",
+        "scan_repository",
+        "top_hotspots"
+      ],
+      "import_paths": [
+        "crate/ScanOptions",
+        "crate/crw_packet/build_crw_packet",
+        "crate/delta/compute_delta",
+        "crate/delta/evaluate_budgets",
+        "crate/graph_topology/cap_topology_for_packet",
+        "crate/graph_topology/export_graph_edges",
+        "crate/model/CHECK_REPORT_SCHEMA_VERSION",
+        "crate/model/CheckReport",
+        "crate/model/JsonlRecord",
+        "crate/model/SNAPSHOT_SCHEMA_VERSION",
+        "crate/model/SemanticBudgets",
+        "crate/model/Snapshot",
+        "crate/safe_io/is_reparse_or_symlink",
+        "crate/safe_io/read_file_bounded",
+        "crate/scan_repository",
+        "crate/scoring/top_hotspots"
+      ],
+      "mod_decl_paths": [],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "composition_root",
+      "fan_in": 0,
+      "fan_out": 6,
+      "nexus_score": 0,
+      "transitive_dependents": 0,
+      "transitive_dependent_tokens": 0,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 1.0,
+      "dampening_reason": null,
+      "raw_hotspot_score": 128.39,
+      "hotspot_score": 128.39,
+      "parse_fallback": false
+    },
+    {
+      "path": "src/crw_packet.rs",
+      "language": "rust",
+      "role": "production",
+      "classification": "standard",
+      "sha256": "678494ec027bd3c2da8b5368a413d56496efa3dc9c5529ceeb6e78ba1582ec7a",
+      "total_loc": 79,
+      "prod_loc": 79,
+      "inline_test_loc": 0,
+      "est_tokens": 615,
+      "function_count": 1,
+      "max_fn_loc": 70,
+      "max_fn_name": "build_crw_packet",
+      "max_nesting_depth": 2,
+      "max_param_count": 3,
+      "functions": [
+        {
+          "name": "build_crw_packet",
+          "start_line": 10,
+          "end_line": 79,
+          "loc": 70,
+          "param_count": 3,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        }
+      ],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [
+        "cap_topology_for_packet",
+        "model",
+        "to_hotspot_entry",
+        "top_hotspots"
+      ],
+      "import_paths": [
+        "crate/graph_topology/cap_topology_for_packet",
+        "crate/model/CRW_PACKET_SCHEMA_VERSION",
+        "crate/model/CrwHandoffPacket",
+        "crate/model/FileRole",
+        "crate/model/HotspotEntry",
+        "crate/model/Snapshot",
+        "crate/model/SnapshotDelta",
+        "crate/scoring/to_hotspot_entry",
+        "crate/scoring/top_hotspots"
+      ],
+      "mod_decl_paths": [],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "hub",
+      "fan_in": 1,
+      "fan_out": 3,
+      "nexus_score": 3,
+      "transitive_dependents": 1,
+      "transitive_dependent_tokens": 6246,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 1.0,
+      "dampening_reason": null,
+      "raw_hotspot_score": 27.27,
+      "hotspot_score": 27.27,
+      "parse_fallback": false
+    },
+    {
+      "path": "src/delta.rs",
+      "language": "rust",
+      "role": "production",
+      "classification": "standard",
+      "sha256": "1469078ac6c9db8095b943cc7e3174dbab375ba0546f3f1d261e354cc34309b4",
+      "total_loc": 293,
+      "prod_loc": 293,
+      "inline_test_loc": 0,
+      "est_tokens": 2249,
+      "function_count": 5,
+      "max_fn_loc": 134,
+      "max_fn_name": "compute_delta",
+      "max_nesting_depth": 5,
+      "max_param_count": 2,
+      "functions": [
+        {
+          "name": "sat_to_i64",
+          "start_line": 10,
+          "end_line": 12,
+          "loc": 3,
+          "param_count": 1,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "sat_diff",
+          "start_line": 14,
+          "end_line": 16,
+          "loc": 3,
+          "param_count": 2,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "compute_delta",
+          "start_line": 18,
+          "end_line": 151,
+          "loc": 134,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "compute_co_change_deltas",
+          "start_line": 153,
+          "end_line": 189,
+          "loc": 37,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "evaluate_budgets",
+          "start_line": 191,
+          "end_line": 293,
+          "loc": 103,
+          "param_count": 2,
+          "max_nesting_depth": 5,
+          "is_flat_dispatcher": false
+        }
+      ],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [
+        "model",
+        "round2"
+      ],
+      "import_paths": [
+        "crate/model/BudgetViolation",
+        "crate/model/CoChangeDelta",
+        "crate/model/DELTA_SCHEMA_VERSION",
+        "crate/model/FileDelta",
+        "crate/model/FileProfile",
+        "crate/model/FileRole",
+        "crate/model/SemanticBudgets",
+        "crate/model/Snapshot",
+        "crate/model/SnapshotDelta",
+        "crate/scoring/round2"
+      ],
+      "mod_decl_paths": [],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "hub",
+      "fan_in": 1,
+      "fan_out": 2,
+      "nexus_score": 2,
+      "transitive_dependents": 1,
+      "transitive_dependent_tokens": 6246,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 1.0,
+      "dampening_reason": null,
+      "raw_hotspot_score": 111.48,
+      "hotspot_score": 111.48,
+      "parse_fallback": false
+    },
+    {
+      "path": "src/discovery.rs",
+      "language": "rust",
+      "role": "production",
+      "classification": "standard",
+      "sha256": "1635efdc39335ca685935aad23f4dc67bb76ed841f76c9175151140344547b42",
+      "total_loc": 260,
+      "prod_loc": 260,
+      "inline_test_loc": 0,
+      "est_tokens": 1765,
+      "function_count": 6,
+      "max_fn_loc": 117,
+      "max_fn_name": "walk_dir",
+      "max_nesting_depth": 3,
+      "max_param_count": 4,
+      "functions": [
+        {
+          "name": "discover_files",
+          "start_line": 45,
+          "end_line": 51,
+          "loc": 7,
+          "param_count": 3,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "discover_files_with_limit",
+          "start_line": 53,
+          "end_line": 78,
+          "loc": 26,
+          "param_count": 4,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "walk_dir",
+          "start_line": 90,
+          "end_line": 206,
+          "loc": 117,
+          "param_count": 3,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "detect_language",
+          "start_line": 209,
+          "end_line": 220,
+          "loc": 12,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "classify_role",
+          "start_line": 222,
+          "end_line": 253,
+          "loc": 32,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "rel_posix",
+          "start_line": 255,
+          "end_line": 260,
+          "loc": 6,
+          "param_count": 2,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        }
+      ],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [
+        "is_reparse_or_symlink",
+        "model",
+        "profile_config",
+        "read_file_bounded"
+      ],
+      "import_paths": [
+        "crate/model/FileRole",
+        "crate/model/Language",
+        "crate/model/SkippedFile",
+        "crate/profile_config/RepoProfile",
+        "crate/safe_io/is_reparse_or_symlink",
+        "crate/safe_io/read_file_bounded"
+      ],
+      "mod_decl_paths": [],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "hub",
+      "fan_in": 1,
+      "fan_out": 3,
+      "nexus_score": 3,
+      "transitive_dependents": 1,
+      "transitive_dependent_tokens": 1283,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 1.0,
+      "dampening_reason": null,
+      "raw_hotspot_score": 59.78,
+      "hotspot_score": 59.78,
+      "parse_fallback": false
+    },
+    {
+      "path": "src/git_history.rs",
+      "language": "rust",
+      "role": "production",
+      "classification": "standard",
+      "sha256": "b2f46f08e00840e33c3d464aaecd0397a3a190b498754be05bd86d14972a4df8",
+      "total_loc": 226,
+      "prod_loc": 226,
+      "inline_test_loc": 0,
+      "est_tokens": 1619,
+      "function_count": 4,
+      "max_fn_loc": 105,
+      "max_fn_name": "collect_git_history",
+      "max_nesting_depth": 4,
+      "max_param_count": 4,
+      "functions": [
+        {
+          "name": "collect_git_history",
+          "start_line": 33,
+          "end_line": 137,
+          "loc": 105,
+          "param_count": 3,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "flush_commit",
+          "start_line": 139,
+          "end_line": 164,
+          "loc": 26,
+          "param_count": 4,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "run_git_capture",
+          "start_line": 166,
+          "end_line": 168,
+          "loc": 3,
+          "param_count": 2,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "run_git_capture_bounded",
+          "start_line": 170,
+          "end_line": 226,
+          "loc": 57,
+          "param_count": 4,
+          "max_nesting_depth": 4,
+          "is_flat_dispatcher": false
+        }
+      ],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [
+        "model"
+      ],
+      "import_paths": [
+        "crate/model/CoChangePair"
+      ],
+      "mod_decl_paths": [],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "hub",
+      "fan_in": 1,
+      "fan_out": 1,
+      "nexus_score": 1,
+      "transitive_dependents": 1,
+      "transitive_dependent_tokens": 1283,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 1.0,
+      "dampening_reason": null,
+      "raw_hotspot_score": 61.13,
+      "hotspot_score": 61.13,
+      "parse_fallback": false
+    },
+    {
+      "path": "src/graph_topology.rs",
+      "language": "rust",
+      "role": "production",
+      "classification": "standard",
+      "sha256": "734da0d272cdd4b525e3fa16020c672c514a937fb18f9771ce3d4c1d26a32ac1",
+      "total_loc": 1229,
+      "prod_loc": 1229,
+      "inline_test_loc": 0,
+      "est_tokens": 9883,
+      "function_count": 26,
+      "max_fn_loc": 194,
+      "max_fn_name": "export_graph_edges",
+      "max_nesting_depth": 6,
+      "max_param_count": 6,
+      "functions": [
+        {
+          "name": "build",
+          "start_line": 32,
+          "end_line": 66,
+          "loc": 35,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "resolve_single_import",
+          "start_line": 68,
+          "end_line": 96,
+          "loc": 29,
+          "param_count": 4,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "resolve_mod_decl",
+          "start_line": 98,
+          "end_line": 106,
+          "loc": 9,
+          "param_count": 4,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "build_import_graph",
+          "start_line": 109,
+          "end_line": 171,
+          "loc": 63,
+          "param_count": 1,
+          "max_nesting_depth": 6,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "resolve_import_path",
+          "start_line": 173,
+          "end_line": 250,
+          "loc": 78,
+          "param_count": 4,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "fallback_stem_from_path",
+          "start_line": 252,
+          "end_line": 271,
+          "loc": 20,
+          "param_count": 1,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "longest_prefix_match",
+          "start_line": 273,
+          "end_line": 285,
+          "loc": 13,
+          "param_count": 3,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "current_module_dir_segments",
+          "start_line": 287,
+          "end_line": 307,
+          "loc": 21,
+          "param_count": 2,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "current_module_path_segments",
+          "start_line": 309,
+          "end_line": 318,
+          "loc": 10,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "analyze_topology",
+          "start_line": 320,
+          "end_line": 413,
+          "loc": 94,
+          "param_count": 4,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "export_graph_edges",
+          "start_line": 415,
+          "end_line": 608,
+          "loc": 194,
+          "param_count": 1,
+          "max_nesting_depth": 4,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "resolve_bypass_target_to_node",
+          "start_line": 610,
+          "end_line": 649,
+          "loc": 40,
+          "param_count": 4,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "cap_topology_for_packet",
+          "start_line": 651,
+          "end_line": 664,
+          "loc": 14,
+          "param_count": 2,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "classify_topology_role",
+          "start_line": 666,
+          "end_line": 673,
+          "loc": 8,
+          "param_count": 2,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "compute_transitive_dependents",
+          "start_line": 675,
+          "end_line": 700,
+          "loc": 26,
+          "param_count": 6,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "compute_tarjan_sccs",
+          "start_line": 702,
+          "end_line": 803,
+          "loc": 102,
+          "param_count": 2,
+          "max_nesting_depth": 6,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "detect_bypasses",
+          "start_line": 805,
+          "end_line": 993,
+          "loc": 189,
+          "param_count": 4,
+          "max_nesting_depth": 6,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_exempt_direct_sibling_reexport",
+          "start_line": 995,
+          "end_line": 1025,
+          "loc": 31,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_exempt_leaf_target",
+          "start_line": 1027,
+          "end_line": 1037,
+          "loc": 11,
+          "param_count": 2,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_module_tree_root",
+          "start_line": 1039,
+          "end_line": 1045,
+          "loc": 7,
+          "param_count": 1,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_direct_parent_index",
+          "start_line": 1047,
+          "end_line": 1081,
+          "loc": 35,
+          "param_count": 2,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "detect_smeared_writes",
+          "start_line": 1083,
+          "end_line": 1120,
+          "loc": 38,
+          "param_count": 1,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "detect_phantom_couplings",
+          "start_line": 1122,
+          "end_line": 1169,
+          "loc": 48,
+          "param_count": 3,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "package_scope",
+          "start_line": 1171,
+          "end_line": 1182,
+          "loc": 12,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "module_path_keys",
+          "start_line": 1184,
+          "end_line": 1213,
+          "loc": 30,
+          "param_count": 2,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "module_keys",
+          "start_line": 1215,
+          "end_line": 1229,
+          "loc": 15,
+          "param_count": 1,
+          "max_nesting_depth": 4,
+          "is_flat_dispatcher": false
+        }
+      ],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [
+        "is_ephemeral_write_target",
+        "model",
+        "profile_config"
+      ],
+      "import_paths": [
+        "crate/model/BypassFinding",
+        "crate/model/CoChangePair",
+        "crate/model/FileClassification",
+        "crate/model/FileProfile",
+        "crate/model/FileRole",
+        "crate/model/GRAPH_EDGES_SCHEMA_VERSION",
+        "crate/model/GraphEdge",
+        "crate/model/GraphEdgesExport",
+        "crate/model/GraphNode",
+        "crate/model/NexusNode",
+        "crate/model/PhantomCoupling",
+        "crate/model/ReachInSignal",
+        "crate/model/SccCluster",
+        "crate/model/SmearedWriteTarget",
+        "crate/model/Snapshot",
+        "crate/model/TopologyReport",
+        "crate/model/is_ephemeral_write_target",
+        "crate/profile_config/RepoProfile"
+      ],
+      "mod_decl_paths": [],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "hub",
+      "fan_in": 4,
+      "fan_out": 2,
+      "nexus_score": 8,
+      "transitive_dependents": 5,
+      "transitive_dependent_tokens": 11942,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 1.0,
+      "dampening_reason": null,
+      "raw_hotspot_score": 335.69,
+      "hotspot_score": 335.69,
+      "parse_fallback": false
+    },
+    {
+      "path": "src/lib.rs",
+      "language": "rust",
+      "role": "production",
+      "classification": "standard",
+      "sha256": "5815fc13cd4ed98b23f7f71a1b98775af570ecd748879e359cb6c646aaf29073",
+      "total_loc": 193,
+      "prod_loc": 193,
+      "inline_test_loc": 0,
+      "est_tokens": 1283,
+      "function_count": 3,
+      "max_fn_loc": 132,
+      "max_fn_name": "scan_repository",
+      "max_nesting_depth": 3,
+      "max_param_count": 2,
+      "functions": [
+        {
+          "name": "default",
+          "start_line": 41,
+          "end_line": 47,
+          "loc": 7,
+          "param_count": 0,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "scan_repository",
+          "start_line": 50,
+          "end_line": 181,
+          "loc": 132,
+          "param_count": 2,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "sha256_hex",
+          "start_line": 183,
+          "end_line": 193,
+          "loc": 11,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        }
+      ],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [
+        "analyze_rust_source",
+        "analyze_text_source",
+        "analyze_topology",
+        "build_import_graph",
+        "collect_git_history",
+        "discover_files",
+        "discovery",
+        "model",
+        "profile_config",
+        "read_file_bounded",
+        "resolve_fan_in_out_and_score",
+        "summarize_repo"
+      ],
+      "import_paths": [
+        "crate/discovery/MAX_SOURCE_BYTES",
+        "crate/discovery/discover_files",
+        "crate/git_history/collect_git_history",
+        "crate/graph_topology/analyze_topology",
+        "crate/graph_topology/build_import_graph",
+        "crate/model/FileProfile",
+        "crate/model/FileRole",
+        "crate/model/Language",
+        "crate/model/SNAPSHOT_SCHEMA_VERSION",
+        "crate/model/SkippedFile",
+        "crate/model/Snapshot",
+        "crate/profile_config/RepoProfile",
+        "crate/rust_ast/analyze_rust_source",
+        "crate/safe_io/read_file_bounded",
+        "crate/scoring/resolve_fan_in_out_and_score",
+        "crate/scoring/summarize_repo",
+        "crate/text_analyzer/analyze_text_source"
+      ],
+      "mod_decl_paths": [
+        "self/cli",
+        "self/crw_packet",
+        "self/delta",
+        "self/discovery",
+        "self/git_history",
+        "self/graph_topology",
+        "self/model",
+        "self/profile_config",
+        "self/rust_ast",
+        "self/safe_io",
+        "self/scoring",
+        "self/text_analyzer"
+      ],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "composition_root",
+      "fan_in": 0,
+      "fan_out": 9,
+      "nexus_score": 0,
+      "transitive_dependents": 0,
+      "transitive_dependent_tokens": 0,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 1.0,
+      "dampening_reason": null,
+      "raw_hotspot_score": 62.89,
+      "hotspot_score": 62.89,
+      "parse_fallback": false
+    },
+    {
+      "path": "src/main.rs",
+      "language": "rust",
+      "role": "production",
+      "classification": "standard",
+      "sha256": "9feeeb0afaba894a6936276d685d6858f7db1749b7d4b66d9d8aff3f92f4d80d",
+      "total_loc": 9,
+      "prod_loc": 9,
+      "inline_test_loc": 0,
+      "est_tokens": 75,
+      "function_count": 1,
+      "max_fn_loc": 9,
+      "max_fn_name": "main",
+      "max_nesting_depth": 1,
+      "max_param_count": 0,
+      "functions": [
+        {
+          "name": "main",
+          "start_line": 1,
+          "end_line": 9,
+          "loc": 9,
+          "param_count": 0,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        }
+      ],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [],
+      "import_paths": [],
+      "mod_decl_paths": [],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "isolated",
+      "fan_in": 0,
+      "fan_out": 0,
+      "nexus_score": 0,
+      "transitive_dependents": 0,
+      "transitive_dependent_tokens": 0,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 1.0,
+      "dampening_reason": null,
+      "raw_hotspot_score": 3.03,
+      "hotspot_score": 3.03,
+      "parse_fallback": false
+    },
+    {
+      "path": "src/model.rs",
+      "language": "rust",
+      "role": "production",
+      "classification": "standard",
+      "sha256": "0046ecf91f497295fa5637b6d37255cbde7395f8056bf7c5b61a7a323d63743f",
+      "total_loc": 489,
+      "prod_loc": 489,
+      "inline_test_loc": 0,
+      "est_tokens": 2877,
+      "function_count": 2,
+      "max_fn_loc": 22,
+      "max_fn_name": "is_ephemeral_write_target",
+      "max_nesting_depth": 1,
+      "max_param_count": 1,
+      "functions": [
+        {
+          "name": "is_ephemeral_write_target",
+          "start_line": 13,
+          "end_line": 34,
+          "loc": 22,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "has_any",
+          "start_line": 317,
+          "end_line": 325,
+          "loc": 9,
+          "param_count": 1,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        }
+      ],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [],
+      "import_paths": [],
+      "mod_decl_paths": [],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "leaf_utility",
+      "fan_in": 11,
+      "fan_out": 0,
+      "nexus_score": 0,
+      "transitive_dependents": 11,
+      "transitive_dependent_tokens": 44316,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 1.0,
+      "dampening_reason": null,
+      "raw_hotspot_score": 71.39,
+      "hotspot_score": 71.39,
+      "parse_fallback": false
+    },
+    {
+      "path": "src/profile_config.rs",
+      "language": "rust",
+      "role": "production",
+      "classification": "standard",
+      "sha256": "a7edede5358861a142026b05bb338a288d9e04f656b6433e7070db69c92e602b",
+      "total_loc": 305,
+      "prod_loc": 305,
+      "inline_test_loc": 0,
+      "est_tokens": 2418,
+      "function_count": 11,
+      "max_fn_loc": 88,
+      "max_fn_name": "load",
+      "max_nesting_depth": 4,
+      "max_param_count": 3,
+      "functions": [
+        {
+          "name": "load",
+          "start_line": 52,
+          "end_line": 139,
+          "loc": 88,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "to_context",
+          "start_line": 141,
+          "end_line": 152,
+          "loc": 12,
+          "param_count": 1,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_ignored",
+          "start_line": 154,
+          "end_line": 156,
+          "loc": 3,
+          "param_count": 2,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_profile_test",
+          "start_line": 158,
+          "end_line": 160,
+          "loc": 3,
+          "param_count": 2,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_cohesive_data",
+          "start_line": 162,
+          "end_line": 166,
+          "loc": 5,
+          "param_count": 2,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_flat_dispatcher",
+          "start_line": 168,
+          "end_line": 172,
+          "loc": 5,
+          "param_count": 2,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "layer_for",
+          "start_line": 174,
+          "end_line": 181,
+          "loc": 8,
+          "param_count": 2,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "validate_layer_rules",
+          "start_line": 184,
+          "end_line": 231,
+          "loc": 48,
+          "param_count": 3,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "glob_match",
+          "start_line": 233,
+          "end_line": 248,
+          "loc": 16,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "match_segments_dp",
+          "start_line": 250,
+          "end_line": 276,
+          "loc": 27,
+          "param_count": 2,
+          "max_nesting_depth": 4,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "segment_match",
+          "start_line": 278,
+          "end_line": 305,
+          "loc": 28,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        }
+      ],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [
+        "is_reparse_or_symlink",
+        "model",
+        "read_file_bounded"
+      ],
+      "import_paths": [
+        "crate/model/LayerEdgeRule",
+        "crate/model/LayerSpec",
+        "crate/model/ProfileContext",
+        "crate/model/SemanticBudgets",
+        "crate/safe_io/is_reparse_or_symlink",
+        "crate/safe_io/read_file_bounded"
+      ],
+      "mod_decl_paths": [],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "hub",
+      "fan_in": 4,
+      "fan_out": 2,
+      "nexus_score": 8,
+      "transitive_dependents": 7,
+      "transitive_dependent_tokens": 23590,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 1.0,
+      "dampening_reason": null,
+      "raw_hotspot_score": 75.04,
+      "hotspot_score": 75.04,
+      "parse_fallback": false
+    },
+    {
+      "path": "src/rust_ast.rs",
+      "language": "rust",
+      "role": "production",
+      "classification": "standard",
+      "sha256": "a9dba444c50ad8dcff15d5601f7cefcaaac725e3be3c9d7940adc42eae5d0047",
+      "total_loc": 1119,
+      "prod_loc": 1119,
+      "inline_test_loc": 0,
+      "est_tokens": 8233,
+      "function_count": 37,
+      "max_fn_loc": 138,
+      "max_fn_name": "visit_item",
+      "max_nesting_depth": 5,
+      "max_param_count": 6,
+      "functions": [
+        {
+          "name": "new",
+          "start_line": 49,
+          "end_line": 64,
+          "loc": 16,
+          "param_count": 1,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "record_reach_in",
+          "start_line": 66,
+          "end_line": 74,
+          "loc": 9,
+          "param_count": 4,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "scan_block_writes",
+          "start_line": 76,
+          "end_line": 85,
+          "loc": 10,
+          "param_count": 2,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "visit_item",
+          "start_line": 87,
+          "end_line": 224,
+          "loc": 138,
+          "param_count": 3,
+          "max_nesting_depth": 5,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "analyze_rust_source",
+          "start_line": 227,
+          "end_line": 296,
+          "loc": 70,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "record",
+          "start_line": 304,
+          "end_line": 315,
+          "loc": 12,
+          "param_count": 4,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "visit_expr_call",
+          "start_line": 319,
+          "end_line": 351,
+          "loc": 33,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "visit_expr_method_call",
+          "start_line": 353,
+          "end_line": 383,
+          "loc": 31,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_lit_false",
+          "start_line": 386,
+          "end_line": 394,
+          "loc": 9,
+          "param_count": 1,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "chain_has_write_open_options",
+          "start_line": 396,
+          "end_line": 431,
+          "loc": 36,
+          "param_count": 1,
+          "max_nesting_depth": 4,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "expr_is_storage_like_receiver",
+          "start_line": 433,
+          "end_line": 451,
+          "loc": 19,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_storage_receiver_name",
+          "start_line": 453,
+          "end_line": 473,
+          "loc": 21,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_valid_put_target",
+          "start_line": 475,
+          "end_line": 477,
+          "loc": 3,
+          "param_count": 1,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "extract_target_literal",
+          "start_line": 479,
+          "end_line": 554,
+          "loc": 76,
+          "param_count": 1,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "extract_raw_literal",
+          "start_line": 556,
+          "end_line": 606,
+          "loc": 51,
+          "param_count": 1,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "extract_format_write_prefix",
+          "start_line": 608,
+          "end_line": 623,
+          "loc": 16,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "normalize_write_target",
+          "start_line": 625,
+          "end_line": 635,
+          "loc": 11,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "extract_path_attr",
+          "start_line": 637,
+          "end_line": 650,
+          "loc": 14,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "normalize_rust_path_attr",
+          "start_line": 652,
+          "end_line": 694,
+          "loc": 43,
+          "param_count": 2,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "measure_fn",
+          "start_line": 696,
+          "end_line": 720,
+          "loc": 25,
+          "param_count": 4,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "detect_flat_dispatcher",
+          "start_line": 722,
+          "end_line": 751,
+          "loc": 30,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "enter",
+          "start_line": 760,
+          "end_line": 767,
+          "loc": 8,
+          "param_count": 2,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "visit_expr",
+          "start_line": 771,
+          "end_line": 797,
+          "loc": 27,
+          "param_count": 2,
+          "max_nesting_depth": 4,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_data_literal_expr",
+          "start_line": 800,
+          "end_line": 807,
+          "loc": 8,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "item_attrs",
+          "start_line": 809,
+          "end_line": 828,
+          "loc": 20,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": true
+        },
+        {
+          "name": "has_test_cfg",
+          "start_line": 830,
+          "end_line": 844,
+          "loc": 15,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "cfg_meta_requires_test",
+          "start_line": 846,
+          "end_line": 865,
+          "loc": 20,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "has_test_attr",
+          "start_line": 867,
+          "end_line": 876,
+          "loc": 10,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "collect_suppressions",
+          "start_line": 878,
+          "end_line": 916,
+          "loc": 39,
+          "param_count": 4,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "has_preceding_comment",
+          "start_line": 918,
+          "end_line": 943,
+          "loc": 26,
+          "param_count": 2,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "extract_internal_use",
+          "start_line": 945,
+          "end_line": 978,
+          "loc": 34,
+          "param_count": 6,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "record_internal_path",
+          "start_line": 980,
+          "end_line": 1046,
+          "loc": 67,
+          "param_count": 5,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_private_ident",
+          "start_line": 1048,
+          "end_line": 1050,
+          "loc": 3,
+          "param_count": 1,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_snake_or_private_mod",
+          "start_line": 1052,
+          "end_line": 1056,
+          "loc": 5,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "merged_line_count",
+          "start_line": 1058,
+          "end_line": 1087,
+          "loc": 30,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "strip_line_ranges",
+          "start_line": 1089,
+          "end_line": 1100,
+          "loc": 12,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "estimate_tokens",
+          "start_line": 1102,
+          "end_line": 1119,
+          "loc": 18,
+          "param_count": 1,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        }
+      ],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [
+        "is_ephemeral_write_target",
+        "model"
+      ],
+      "import_paths": [
+        "crate/model/FileClassification",
+        "crate/model/FunctionMetrics",
+        "crate/model/ReachInSignal",
+        "crate/model/SuppressionMetrics",
+        "crate/model/WriteSinkHit",
+        "crate/model/is_ephemeral_write_target"
+      ],
+      "mod_decl_paths": [],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "hub",
+      "fan_in": 2,
+      "fan_out": 1,
+      "nexus_score": 2,
+      "transitive_dependents": 2,
+      "transitive_dependent_tokens": 9739,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 1.0,
+      "dampening_reason": null,
+      "raw_hotspot_score": 223.75,
+      "hotspot_score": 223.75,
+      "parse_fallback": false
+    },
+    {
+      "path": "src/safe_io.rs",
+      "language": "rust",
+      "role": "production",
+      "classification": "standard",
+      "sha256": "4a5b2c4c222835a8e261cae9facb9c54b3c1304b9b1651f18049cb7667b07dfa",
+      "total_loc": 47,
+      "prod_loc": 47,
+      "inline_test_loc": 0,
+      "est_tokens": 437,
+      "function_count": 2,
+      "max_fn_loc": 21,
+      "max_fn_name": "read_file_bounded",
+      "max_nesting_depth": 1,
+      "max_param_count": 2,
+      "functions": [
+        {
+          "name": "is_reparse_or_symlink",
+          "start_line": 14,
+          "end_line": 25,
+          "loc": 12,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "read_file_bounded",
+          "start_line": 27,
+          "end_line": 47,
+          "loc": 21,
+          "param_count": 2,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        }
+      ],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [],
+      "import_paths": [],
+      "mod_decl_paths": [],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "leaf_utility",
+      "fan_in": 4,
+      "fan_out": 0,
+      "nexus_score": 0,
+      "transitive_dependents": 8,
+      "transitive_dependent_tokens": 26008,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 1.0,
+      "dampening_reason": null,
+      "raw_hotspot_score": 11.51,
+      "hotspot_score": 11.51,
+      "parse_fallback": false
+    },
+    {
+      "path": "src/scoring.rs",
+      "language": "rust",
+      "role": "production",
+      "classification": "standard",
+      "sha256": "0511dcafd8fc68a8718de734460fb3faca79834a584b071c374548d552baa2fd",
+      "total_loc": 234,
+      "prod_loc": 234,
+      "inline_test_loc": 0,
+      "est_tokens": 1549,
+      "function_count": 7,
+      "max_fn_loc": 78,
+      "max_fn_name": "summarize_repo",
+      "max_nesting_depth": 3,
+      "max_param_count": 3,
+      "functions": [
+        {
+          "name": "resolve_fan_in_out_and_score",
+          "start_line": 10,
+          "end_line": 20,
+          "loc": 11,
+          "param_count": 3,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "score_file",
+          "start_line": 22,
+          "end_line": 96,
+          "loc": 75,
+          "param_count": 2,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "summarize_repo",
+          "start_line": 98,
+          "end_line": 175,
+          "loc": 78,
+          "param_count": 2,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "top_hotspots",
+          "start_line": 177,
+          "end_line": 189,
+          "loc": 13,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "to_hotspot_entry",
+          "start_line": 191,
+          "end_line": 215,
+          "loc": 25,
+          "param_count": 1,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "percentile",
+          "start_line": 217,
+          "end_line": 223,
+          "loc": 7,
+          "param_count": 2,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "round2",
+          "start_line": 225,
+          "end_line": 234,
+          "loc": 10,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        }
+      ],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [
+        "graph_topology",
+        "model",
+        "profile_config"
+      ],
+      "import_paths": [
+        "crate/graph_topology/ProductionGraph",
+        "crate/model/FileClassification",
+        "crate/model/FileProfile",
+        "crate/model/FileRole",
+        "crate/model/HotspotEntry",
+        "crate/model/RepoSummary",
+        "crate/model/TopologyReport",
+        "crate/profile_config/RepoProfile"
+      ],
+      "mod_decl_paths": [],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "hub",
+      "fan_in": 4,
+      "fan_out": 3,
+      "nexus_score": 12,
+      "transitive_dependents": 4,
+      "transitive_dependent_tokens": 10393,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 1.0,
+      "dampening_reason": null,
+      "raw_hotspot_score": 50.47,
+      "hotspot_score": 50.47,
+      "parse_fallback": false
+    },
+    {
+      "path": "src/text_analyzer.rs",
+      "language": "rust",
+      "role": "production",
+      "classification": "standard",
+      "sha256": "a4afbc2647dc36e962e4c58d06de4b7a476116e7171377253f368c803bc7e1b3",
+      "total_loc": 1126,
+      "prod_loc": 1126,
+      "inline_test_loc": 0,
+      "est_tokens": 8456,
+      "function_count": 28,
+      "max_fn_loc": 250,
+      "max_fn_name": "analyze_python",
+      "max_nesting_depth": 7,
+      "max_param_count": 7,
+      "functions": [
+        {
+          "name": "analyze_text_source",
+          "start_line": 16,
+          "end_line": 32,
+          "loc": 17,
+          "param_count": 4,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "analyze_python",
+          "start_line": 34,
+          "end_line": 283,
+          "loc": 250,
+          "param_count": 3,
+          "max_nesting_depth": 7,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "analyze_brace_or_shell",
+          "start_line": 285,
+          "end_line": 396,
+          "loc": 112,
+          "param_count": 4,
+          "max_nesting_depth": 6,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "record_write_hit",
+          "start_line": 398,
+          "end_line": 415,
+          "loc": 18,
+          "param_count": 5,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "scan_python_write_sinks",
+          "start_line": 417,
+          "end_line": 499,
+          "loc": 83,
+          "param_count": 4,
+          "max_nesting_depth": 5,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "scan_general_write_sinks",
+          "start_line": 501,
+          "end_line": 538,
+          "loc": 38,
+          "param_count": 5,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "scan_storage_put_call",
+          "start_line": 540,
+          "end_line": 560,
+          "loc": 21,
+          "param_count": 4,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "strip_inline_comment",
+          "start_line": 562,
+          "end_line": 596,
+          "loc": 35,
+          "param_count": 2,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "extract_balanced_paren_body",
+          "start_line": 598,
+          "end_line": 630,
+          "loc": 33,
+          "param_count": 1,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "split_top_level_args",
+          "start_line": 632,
+          "end_line": 672,
+          "loc": 41,
+          "param_count": 1,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "extract_immediate_receiver",
+          "start_line": 674,
+          "end_line": 715,
+          "loc": 42,
+          "param_count": 1,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "extract_trailing_ident",
+          "start_line": 717,
+          "end_line": 725,
+          "loc": 9,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "find_call_pos",
+          "start_line": 727,
+          "end_line": 742,
+          "loc": 16,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_python_write_mode",
+          "start_line": 744,
+          "end_line": 750,
+          "loc": 7,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "extract_first_literal_arg",
+          "start_line": 752,
+          "end_line": 759,
+          "loc": 8,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "extract_quoted_literals",
+          "start_line": 761,
+          "end_line": 790,
+          "loc": 30,
+          "param_count": 1,
+          "max_nesting_depth": 4,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "count_structural_braces",
+          "start_line": 792,
+          "end_line": 834,
+          "loc": 43,
+          "param_count": 2,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "scan_python_suppression",
+          "start_line": 836,
+          "end_line": 863,
+          "loc": 28,
+          "param_count": 4,
+          "max_nesting_depth": 4,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "scan_general_suppression",
+          "start_line": 865,
+          "end_line": 913,
+          "loc": 49,
+          "param_count": 5,
+          "max_nesting_depth": 4,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_blanket_eslint_directive",
+          "start_line": 915,
+          "end_line": 925,
+          "loc": 11,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "extract_general_import",
+          "start_line": 927,
+          "end_line": 997,
+          "loc": 71,
+          "param_count": 7,
+          "max_nesting_depth": 6,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "detect_brace_fn_header",
+          "start_line": 999,
+          "end_line": 1046,
+          "loc": 48,
+          "param_count": 2,
+          "max_nesting_depth": 3,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "parse_name_and_params",
+          "start_line": 1048,
+          "end_line": 1061,
+          "loc": 14,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "indent_width",
+          "start_line": 1063,
+          "end_line": 1068,
+          "loc": 6,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "extract_py_fn_name",
+          "start_line": 1070,
+          "end_line": 1076,
+          "loc": 7,
+          "param_count": 1,
+          "max_nesting_depth": 1,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "extract_py_params",
+          "start_line": 1078,
+          "end_line": 1099,
+          "loc": 22,
+          "param_count": 2,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "is_py_control_header",
+          "start_line": 1101,
+          "end_line": 1110,
+          "loc": 10,
+          "param_count": 1,
+          "max_nesting_depth": 0,
+          "is_flat_dispatcher": false
+        },
+        {
+          "name": "looks_like_static_data",
+          "start_line": 1112,
+          "end_line": 1126,
+          "loc": 15,
+          "param_count": 1,
+          "max_nesting_depth": 2,
+          "is_flat_dispatcher": false
+        }
+      ],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [
+        "estimate_tokens",
+        "has_preceding_comment",
+        "is_private_ident",
+        "is_storage_receiver_name",
+        "is_valid_put_target",
+        "model",
+        "normalize_write_target",
+        "rust_ast"
+      ],
+      "import_paths": [
+        "crate/model/FileClassification",
+        "crate/model/FunctionMetrics",
+        "crate/model/Language",
+        "crate/model/ReachInSignal",
+        "crate/model/SuppressionMetrics",
+        "crate/model/WriteSinkHit",
+        "crate/rust_ast/AnalyzedUnit",
+        "crate/rust_ast/estimate_tokens",
+        "crate/rust_ast/has_preceding_comment",
+        "crate/rust_ast/is_private_ident",
+        "crate/rust_ast/is_storage_receiver_name",
+        "crate/rust_ast/is_valid_put_target",
+        "crate/rust_ast/normalize_write_target"
+      ],
+      "mod_decl_paths": [],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "hub",
+      "fan_in": 1,
+      "fan_out": 2,
+      "nexus_score": 2,
+      "transitive_dependents": 1,
+      "transitive_dependent_tokens": 1283,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 1.0,
+      "dampening_reason": null,
+      "raw_hotspot_score": 398.87,
+      "hotspot_score": 398.87,
+      "parse_fallback": false
+    },
+    {
+      "path": "tests/semantic_profiler_tests.rs",
+      "language": "rust",
+      "role": "test",
+      "classification": "test_or_eval",
+      "sha256": "61955dc639f90b4aa8b21239d7a0f09f62b9fb044008f6d15556c4bb91dc74fe",
+      "total_loc": 2173,
+      "prod_loc": 0,
+      "inline_test_loc": 0,
+      "est_tokens": 21642,
+      "function_count": 0,
+      "max_fn_loc": 0,
+      "max_fn_name": null,
+      "max_nesting_depth": 0,
+      "max_param_count": 0,
+      "functions": [],
+      "suppressions": {
+        "total": 0,
+        "blanket": 0,
+        "narrow": 0,
+        "justified_narrow": 0,
+        "directives": []
+      },
+      "internal_imports": [],
+      "import_paths": [],
+      "mod_decl_paths": [],
+      "reach_ins": [],
+      "write_targets": [],
+      "layer": null,
+      "topology_role": "test_or_eval",
+      "fan_in": 0,
+      "fan_out": 0,
+      "nexus_score": 0,
+      "transitive_dependents": 0,
+      "transitive_dependent_tokens": 0,
+      "churn_commits": 1,
+      "co_change_partners": 14,
+      "dampening_factor": 0.0,
+      "dampening_reason": "test/eval file scored separately from production",
+      "raw_hotspot_score": 0.0,
+      "hotspot_score": 0.0,
+      "parse_fallback": false
+    }
+  ],
+  "co_change_pairs": [],
+  "skipped_files": []
+}
