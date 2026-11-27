@@ -4,6 +4,7 @@
 use crate::model::{
     FileClassification, FunctionMetrics, Language, ReachInSignal, SuppressionMetrics, WriteSinkHit,
 };
+use crate::python_scan::{scan_python_functions, scan_python_line_states};
 use crate::rust_ast::{
     AnalyzedUnit, estimate_tokens, has_preceding_comment, is_private_ident,
     is_storage_receiver_name, is_valid_put_target, normalize_write_target,
@@ -33,8 +34,8 @@ pub fn analyze_text_source(
 
 fn analyze_python(source: &str, is_test_or_eval: bool, parse_fallback: bool) -> AnalyzedUnit {
     let lines: Vec<&str> = source.lines().collect();
+    let line_states = scan_python_line_states(&lines);
     let total_loc = lines.len();
-    let mut functions = Vec::new();
     let mut suppressions = SuppressionMetrics::default();
     let mut imports: BTreeSet<String> = BTreeSet::new();
     let mut import_paths: BTreeSet<String> = BTreeSet::new();
@@ -43,6 +44,9 @@ fn analyze_python(source: &str, is_test_or_eval: bool, parse_fallback: bool) -> 
     let mut seen_writes: BTreeSet<(String, usize)> = BTreeSet::new();
 
     for (idx, line) in lines.iter().enumerate() {
+        if line_states[idx].starts_in_string() {
+            continue;
+        }
         let trimmed = line.trim();
         let line_no = idx + 1;
 
@@ -193,64 +197,11 @@ fn analyze_python(source: &str, is_test_or_eval: bool, parse_fallback: bool) -> 
         }
     }
 
-    if !is_test_or_eval {
-        let mut idx = 0usize;
-        while idx < lines.len() {
-            let line = lines[idx];
-            let trimmed = line.trim();
-            if trimmed.starts_with("def ") || trimmed.starts_with("async def ") {
-                let def_indent = indent_width(line);
-                let name = extract_py_fn_name(trimmed);
-                let params = extract_py_params(&lines, idx);
-                let start_line = idx + 1;
-
-                let mut end_idx = idx;
-                let mut max_nesting = 0usize;
-                let mut block_indents: Vec<usize> = Vec::new();
-
-                let mut j = idx + 1;
-                while j < lines.len() {
-                    let cur = lines[j];
-                    let cur_trimmed = cur.trim();
-                    if cur_trimmed.is_empty() || cur_trimmed.starts_with('#') {
-                        j += 1;
-                        continue;
-                    }
-                    let ind = indent_width(cur);
-                    if ind <= def_indent {
-                        break;
-                    }
-                    end_idx = j;
-                    while let Some(&top) = block_indents.last() {
-                        if ind <= top {
-                            block_indents.pop();
-                        } else {
-                            break;
-                        }
-                    }
-                    if is_py_control_header(cur_trimmed) {
-                        block_indents.push(ind);
-                        if block_indents.len() > max_nesting {
-                            max_nesting = block_indents.len();
-                        }
-                    }
-                    j += 1;
-                }
-
-                let end_line = end_idx + 1;
-                functions.push(FunctionMetrics {
-                    name,
-                    start_line,
-                    end_line,
-                    loc: end_line.saturating_sub(start_line) + 1,
-                    param_count: params,
-                    max_nesting_depth: max_nesting,
-                    is_flat_dispatcher: false,
-                });
-            }
-            idx += 1;
-        }
-    }
+    let functions = if is_test_or_eval {
+        Vec::new()
+    } else {
+        scan_python_functions(&lines, &line_states)
+    };
 
     let prod_loc = if is_test_or_eval { 0 } else { total_loc };
     let detected_classification = if is_test_or_eval {
@@ -1058,55 +1009,6 @@ fn parse_name_and_params(rest: &str) -> Option<(String, usize)> {
         params_str.split(',').filter(|s| !s.trim().is_empty()).count()
     };
     Some((name, count))
-}
-
-fn indent_width(line: &str) -> usize {
-    line.chars()
-        .take_while(|c| *c == ' ' || *c == '\t')
-        .map(|c| if c == '\t' { 4 } else { 1 })
-        .sum()
-}
-
-fn extract_py_fn_name(trimmed: &str) -> String {
-    let rest = trimmed
-        .strip_prefix("async def ")
-        .or_else(|| trimmed.strip_prefix("def "))
-        .unwrap_or(trimmed);
-    rest.split('(').next().unwrap_or("unknown").trim().to_string()
-}
-
-fn extract_py_params(lines: &[&str], start_idx: usize) -> usize {
-    let mut buf = String::new();
-    for line in lines.iter().skip(start_idx).take(12) {
-        buf.push_str(line.trim());
-        buf.push(' ');
-        if line.contains(')') {
-            break;
-        }
-    }
-    let Some((_, after_open)) = buf.split_once('(') else {
-        return 0;
-    };
-    let params_part = after_open.split(')').next().unwrap_or("").trim();
-    if params_part.is_empty() {
-        return 0;
-    }
-    params_part
-        .split(',')
-        .map(str::trim)
-        .filter(|p| !p.is_empty() && *p != "self" && *p != "cls" && *p != "/" && *p != "*")
-        .count()
-}
-
-fn is_py_control_header(trimmed: &str) -> bool {
-    trimmed.starts_with("if ")
-        || trimmed.starts_with("for ")
-        || trimmed.starts_with("async for ")
-        || trimmed.starts_with("while ")
-        || trimmed.starts_with("with ")
-        || trimmed.starts_with("async with ")
-        || trimmed.starts_with("try:")
-        || trimmed.starts_with("match ")
 }
 
 fn looks_like_static_data(lines: &[&str]) -> bool {

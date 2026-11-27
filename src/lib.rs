@@ -10,6 +10,7 @@ pub mod git_history;
 pub mod graph_topology;
 pub mod model;
 pub mod profile_config;
+pub mod python_scan;
 pub mod rust_ast;
 pub mod safe_io;
 pub mod scoring;

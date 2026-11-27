@@ -2171,3 +2171,240 @@ fn crate_anchored_imports_do_not_leak_across_crates_and_path_attr_resolves_modul
         export.edges
     );
 }
+
+#[test]
+fn python_multiline_signatures_and_param_counts_match_syntax() {
+    let tmp = TempDir::new("py-multiline-sigs");
+    fs::create_dir_all(tmp.path().join("pkg")).unwrap();
+
+    // 1. Multiline `def` with 16 params (>12 lines), nested generic types, tuple/call/string/lambda
+    //    defaults, comments containing `)` and `:`, `/` & `*` separators, `*args`, `**kwargs`,
+    //    multiline return annotation, `)` at def_indent, and a 50-line body.
+    let mut src = String::from(
+        concat!(
+            "def long_multiline(\n",
+            "    p1: int,\n",
+            "    p2: str = \",\",\n",
+            "    /,\n",
+            "    p3: dict[str, tuple[int, str]] = {},\n",
+            "    p4: Callable[[int, str], dict[str, Any]] = default_fn(1, 2),\n",
+            "    p5: tuple[int, int] = (1, 2),  # comment with ) and : and ,\n",
+            "    p6: str = \") -> None:\",\n",
+            "    p7: Callable[[int, int], int] = lambda a, b: a + b,\n",
+            "    *,\n",
+            "    p8: int = 8,\n",
+            "    p9: int = 9,\n",
+            "    p10: int = 10,\n",
+            "    p11: int = 11,\n",
+            "    p12: int = 12,\n",
+            "    p13: int = 13,\n",
+            "    p14: int = 14,\n",
+            "    *args: int,\n",
+            "    **kwargs: Any,\n",
+            ") -> tuple[\n",
+            "    int,\n",
+            "    str,\n",
+            "]:  # trailing header comment\n",
+        ),
+    );
+    // Header is 23 lines (lines 1..=23). Add 50 body lines (lines 24..=73) -> total loc = 73.
+    for i in 0..49 {
+        src.push_str(&format!("    v{i} = p1 + {i}\n"));
+    }
+    src.push_str("    return (p1, p2)\n\n");
+
+    // 2. Async method with typed `self`, `cls` classmethod, multiline return annotation, and PEP 695 type params.
+    src.push_str(concat!(
+        "class Service:\n",
+        "    async def fetch(\n",
+        "        self: \"Service\",\n",
+        "        url: str,\n",
+        "        headers: dict[str, str] = {\"a\": \"b,c\"},\n",
+        "        timeout: tuple[float, float] = (1.0, 5.0),\n",
+        "    ) -> tuple[\n",
+        "        int,\n",
+        "        bytes,\n",
+        "    ]:\n",
+        "        status = 200\n",
+        "        if url:\n",
+        "            status = 201\n",
+        "        return (status, b\"ok\")\n",
+        "\n",
+        "    @classmethod\n",
+        "    def build(\n",
+        "        cls: type[\"Service\"],\n",
+        "        name: str,\n",
+        "    ) -> \"Service\":\n",
+        "        return cls()\n",
+        "\n",
+        "def generic_pair[T, U](\n",
+        "    first: T,\n",
+        "    second: U,\n",
+        ") -> tuple[T, U]:\n",
+        "    return (first, second)\n",
+    ));
+
+    fs::write(tmp.path().join("pkg/sigs.py"), src).unwrap();
+
+    let snap = scan_repository(
+        tmp.path(),
+        &ScanOptions {
+            git_window: 0,
+            ..Default::default()
+        },
+    )
+    .expect("scan python multiline sigs");
+
+    let py = snap
+        .files
+        .iter()
+        .find(|f| f.path == "pkg/sigs.py")
+        .expect("pkg/sigs.py");
+
+    let long_fn = py
+        .functions
+        .iter()
+        .find(|f| f.name == "long_multiline")
+        .expect("long_multiline");
+    assert_eq!(long_fn.start_line, 1);
+    assert_eq!(long_fn.end_line, 73);
+    assert_eq!(long_fn.loc, 73);
+    assert_eq!(
+        long_fn.param_count, 16,
+        "14 named params + *args + **kwargs (excluding / and *)"
+    );
+
+    let fetch = py
+        .functions
+        .iter()
+        .find(|f| f.name == "fetch")
+        .expect("fetch");
+    assert_eq!(fetch.loc, 13);
+    assert_eq!(fetch.param_count, 3, "typed self must be excluded");
+    assert_eq!(fetch.max_nesting_depth, 1);
+
+    let build = py
+        .functions
+        .iter()
+        .find(|f| f.name == "build")
+        .expect("build");
+    assert_eq!(build.loc, 5);
+    assert_eq!(build.param_count, 1, "typed cls must be excluded");
+
+    let generic = py
+        .functions
+        .iter()
+        .find(|f| f.name == "generic_pair")
+        .expect("generic_pair");
+    assert_eq!(generic.loc, 5);
+    assert_eq!(generic.param_count, 2);
+}
+
+#[test]
+fn python_multiline_strings_continuations_inline_and_nested_defs() {
+    let tmp = TempDir::new("py-strings-and-cont");
+    fs::create_dir_all(tmp.path().join("pkg")).unwrap();
+
+    let src = concat!(
+        "def with_docstrings(x: int) -> str:\n",               // 1
+        "    \"\"\"\n",                                          // 2
+        "Flush-left docstring line.\n",                          // 3
+        "from fake_pkg import _secret_helper\n",                 // 4
+        "def fake_inside_double_triple():\n",                    // 5
+        "    return 999\n",                                      // 6
+        "\"\"\"\n",                                              // 7
+        "    if x > 0:\n",                                       // 8
+        "        sql = '''\n",                                   // 9
+        "SELECT *\n",                                            // 10
+        "def fake_inside_single_triple():\n",                    // 11
+        "if fake_branch:\n",                                     // 12
+        "    for z in items:\n",                                 // 13
+        "'''\n",                                                 // 14
+        "        if x > 1:\n",                                   // 15
+        "            return sql\n",                              // 16
+        "    return \"\"\n",                                     // 17
+        "\n",                                                    // 18
+        "def with_flush_left_continuations(a, b):\n",            // 19
+        "    items = [\n",                                       // 20
+        "        a,\n",                                          // 21
+        "        b,\n",                                          // 22
+        "]\n",                                                   // 23
+        "    total = a + \\\n",                                  // 24
+        "b\n",                                                   // 25
+        "    return (items, total)\n",                           // 26
+        "\n",                                                    // 27
+        "def one_liner(x): return x + 1\n",                      // 28
+        "def second_one_liner(x, y): return x * y\n",            // 29
+        "\n",                                                    // 30
+        "def outer(n: int) -> int:\n",                           // 31
+        "    def inner(\n",                                      // 32
+        "        k: int,\n",                                     // 33
+        "    ) -> int:\n",                                       // 34
+        "        return k * 2\n",                                // 35
+        "    return inner(n) + 1\n",                             // 36
+    );
+    fs::write(tmp.path().join("pkg/body_cases.py"), src).unwrap();
+
+    let snap = scan_repository(
+        tmp.path(),
+        &ScanOptions {
+            git_window: 0,
+            ..Default::default()
+        },
+    )
+    .expect("scan python body cases");
+
+    let py = snap
+        .files
+        .iter()
+        .find(|f| f.path == "pkg/body_cases.py")
+        .expect("pkg/body_cases.py");
+
+    let fn_names: Vec<&str> = py.functions.iter().map(|f| f.name.as_str()).collect();
+    assert_eq!(
+        fn_names,
+        vec![
+            "with_docstrings",
+            "with_flush_left_continuations",
+            "one_liner",
+            "second_one_liner",
+            "outer",
+            "inner",
+        ],
+        "fake defs inside triple-quoted strings must not be reported"
+    );
+    assert!(
+        py.internal_imports.is_empty() && py.reach_ins.is_empty(),
+        "fake `from ... import ...` inside triple-quoted string must be ignored: imports={:?}, reach_ins={:?}",
+        py.internal_imports,
+        py.reach_ins
+    );
+
+    let doc_fn = &py.functions[0];
+    assert_eq!((doc_fn.start_line, doc_fn.end_line, doc_fn.loc), (1, 17, 17));
+    assert_eq!(
+        doc_fn.max_nesting_depth, 2,
+        "flush-left triple-quoted string must not corrupt block_indents or add fake nesting"
+    );
+
+    let cont_fn = &py.functions[1];
+    assert_eq!(
+        (cont_fn.start_line, cont_fn.end_line, cont_fn.loc),
+        (19, 26, 8)
+    );
+
+    let one = &py.functions[2];
+    assert_eq!((one.start_line, one.end_line, one.loc, one.param_count), (28, 28, 1, 1));
+
+    let two = &py.functions[3];
+    assert_eq!((two.start_line, two.end_line, two.loc, two.param_count), (29, 29, 1, 2));
+
+    let outer = &py.functions[4];
+    assert_eq!((outer.start_line, outer.end_line, outer.loc), (31, 36, 6));
+
+    let inner = &py.functions[5];
+    assert_eq!(
+        (inner.start_line, inner.end_line, inner.loc, inner.param_count),
+        (32, 35, 4, 1)
+    );
+}
