@@ -2408,3 +2408,151 @@ fn python_multiline_strings_continuations_inline_and_nested_defs() {
         (32, 35, 4, 1)
     );
 }
+
+#[test]
+fn python_pep701_fstrings_tstrings_raw_escapes_nested_lambda_and_eof_resilience() {
+    let tmp = TempDir::new("py-pep701-and-edge-cases");
+    fs::create_dir_all(tmp.path().join("pkg")).unwrap();
+
+    // 1. PEP 701 f-strings (nested same-quote with unbalanced `(`, format specs with `#` and nested
+    //    `{width}`, multiline `{...}` with nested triple-quoted `def fake():`), Python 3.14 t-strings,
+    //    raw string escapes (`r"\""`, `r"\\"`), escaped triple quotes (`"""foo\"""bar"""`),
+    //    nested `lambda` inside `lambda` default, >256 bytes of whitespace before param name,
+    //    multiline inline suite (`def f(x): return (\n 1 + 2\n)`), and parenthesized/tabbed control headers.
+    let long_ws = " ".repeat(300);
+    let mut code = String::from(concat!(
+        "async def uses_pep701(text: str, d: dict[str, str], width: int) -> str:\n", // 1
+        "    head = f\"{text.split(\"(\")[0]}\"\n",                                  // 2
+        "    fmt = f\"{255:#x} {text:>{width}} {{escaped}}\"\n",                     // 3
+        "    tpl = t\"{text.split(\"(\")[0]}\"\n",                                   // 4
+        "    multi = f\"{\n",                                                        // 5
+        "        '''\n",                                                             // 6
+        "def fake_in_fstring():\n",                                                  // 7
+        "from fake_fstring_mod import _leak\n",                                      // 8
+        "'''\n",                                                                     // 9
+        "    }\"\n",                                                                 // 10
+        "    raw1 = r\"\\\"\"\n",                                                    // 11
+        "    raw2 = r\"\\\\\"\n",                                                    // 12
+        "    esc_triple = \"\"\"foo\\\"\"\"bar\"\"\"\n",                             // 13
+        "    if\ttext:\n",                                                           // 14
+        "        async\twith(open_ctx()):\n",                                        // 15
+        "            async\tfor item in stream:\n",                                  // 16
+        "                try :\n",                                                   // 17
+        "                    match(width):\n",                                       // 18
+        "                        pass\n",                                            // 19
+        "    return head + fmt + str(tpl) + multi + raw1 + raw2 + esc_triple\n",     // 20
+        "\n",                                                                        // 21
+        "def after_pep701(\n",                                                       // 22
+        "    x=f\"{d[\"a,b\"]}\",\n",                                                // 23
+        "    y=1,\n",                                                                // 24
+        ") -> int:\n",                                                               // 25
+        "    return y\n",                                                            // 26
+        "\n",                                                                        // 27
+        "def nested_lambda_default(\n",                                              // 28
+        "    fn=lambda a=lambda x, y: x + y, b=1: a(b, b),\n",                       // 29
+        "    z=2,\n",                                                                // 30
+        ") -> int:\n",                                                               // 31
+        "    return fn() + z\n",                                                     // 32
+        "\n",                                                                        // 33
+        "def multiline_inline_suite(x: int) -> int: return (\n",                     // 34
+        "    x + 1\n",                                                               // 35
+        ")\n",                                                                       // 36
+        "\n",                                                                        // 37
+    ));
+    // Add function with >256 bytes of leading whitespace before a parameter name.
+    code.push_str("def wide_ws_param(\n"); // 38
+    code.push_str(&format!("{long_ws}self,\n")); // 39
+    code.push_str(&format!("{long_ws}alpha: int,\n")); // 40
+    code.push_str(") -> int:\n"); // 41
+    code.push_str("    return alpha\n"); // 42
+
+    fs::write(tmp.path().join("pkg/pep701.py"), code).unwrap();
+
+    // 2. Unclosed/truncated EOF inputs must never panic or loop.
+    fs::write(
+        tmp.path().join("pkg/truncated.py"),
+        concat!(
+            "def truncated_sig(\n",
+            "    a: int,\n",
+            "    b: str = f\"{x:10\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        tmp.path().join("pkg/unclosed_str.py"),
+        concat!(
+            "def ok_before():\n",
+            "    s = f\"unclosed\n",
+            "def ok_after(x):\n",
+            "    return x\n",
+        ),
+    )
+    .unwrap();
+
+    let snap = scan_repository(
+        tmp.path(),
+        &ScanOptions {
+            git_window: 0,
+            ..Default::default()
+        },
+    )
+    .expect("scan pep701 and truncated");
+
+    let py = snap
+        .files
+        .iter()
+        .find(|f| f.path == "pkg/pep701.py")
+        .expect("pkg/pep701.py");
+
+    let names: Vec<&str> = py.functions.iter().map(|f| f.name.as_str()).collect();
+    assert_eq!(
+        names,
+        vec![
+            "uses_pep701",
+            "after_pep701",
+            "nested_lambda_default",
+            "multiline_inline_suite",
+            "wide_ws_param",
+        ],
+        "PEP 701 f-string must neither swallow subsequent defs nor spawn phantom defs"
+    );
+    assert!(
+        py.internal_imports.is_empty() && py.reach_ins.is_empty(),
+        "fake import inside triple-quoted string inside f-string must be ignored"
+    );
+
+    let f0 = &py.functions[0];
+    assert_eq!((f0.start_line, f0.end_line, f0.loc, f0.param_count), (1, 20, 20, 3));
+    assert_eq!(
+        f0.max_nesting_depth, 5,
+        "if\\t, async\\twith(, async\\tfor, try :, match( must all register nesting levels"
+    );
+
+    let f1 = &py.functions[1];
+    assert_eq!((f1.start_line, f1.end_line, f1.loc, f1.param_count), (22, 26, 5, 2));
+
+    let f2 = &py.functions[2];
+    assert_eq!((f2.start_line, f2.end_line, f2.loc, f2.param_count), (28, 32, 5, 2));
+
+    let f3 = &py.functions[3];
+    assert_eq!((f3.start_line, f3.end_line, f3.loc, f3.param_count), (34, 36, 3, 1));
+
+    let f4 = &py.functions[4];
+    assert_eq!((f4.start_line, f4.end_line, f4.loc, f4.param_count), (38, 42, 5, 1));
+
+    let unclosed = snap
+        .files
+        .iter()
+        .find(|f| f.path == "pkg/unclosed_str.py")
+        .expect("pkg/unclosed_str.py");
+    let unclosed_names: Vec<&str> = unclosed.functions.iter().map(|f| f.name.as_str()).collect();
+    assert_eq!(unclosed_names, vec!["ok_before", "ok_after"]);
+
+    let trunc = snap
+        .files
+        .iter()
+        .find(|f| f.path == "pkg/truncated.py")
+        .expect("pkg/truncated.py");
+    assert_eq!(trunc.functions.len(), 1);
+    assert_eq!(trunc.functions[0].name, "truncated_sig");
+}
