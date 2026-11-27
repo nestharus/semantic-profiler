@@ -5,6 +5,7 @@ pub mod cli;
 pub mod crw_packet;
 pub mod delta;
 pub mod discovery;
+pub mod ecosystem;
 pub mod git_history;
 pub mod graph_topology;
 pub mod model;

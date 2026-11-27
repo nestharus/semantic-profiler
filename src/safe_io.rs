@@ -1,9 +1,9 @@
 //! Bounded, symlink- and reparse-point-safe file reading utilities.
 //! Pure zero-fan-out leaf module shared by discovery, profile loading, and CLI.
 
-use std::fs::{File, Metadata};
+use std::fs::{self, File, Metadata};
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[cfg(windows)]
 use std::os::windows::fs::MetadataExt;
@@ -22,6 +22,45 @@ pub fn is_reparse_or_symlink(meta: &Metadata) -> bool {
         }
     }
     false
+}
+
+/// Normalize away trailing path separators (preserving filesystem roots like `/` or `C:\`).
+pub fn strip_trailing_separators(path: &Path) -> PathBuf {
+    let cleaned: PathBuf = path.components().collect();
+    if cleaned.as_os_str().is_empty() {
+        path.to_path_buf()
+    } else {
+        cleaned
+    }
+}
+
+/// Reject any existing symlink or Windows reparse-point component along `path`
+/// and all of its existing ancestors (skipping only the bare filesystem root).
+pub fn reject_reparse_or_symlink_ancestors(path: &Path, label: &str) -> Result<PathBuf, String> {
+    let cleaned = strip_trailing_separators(path);
+    for anc in cleaned.ancestors() {
+        if anc.as_os_str().is_empty() || anc.parent().is_none() {
+            continue;
+        }
+        match fs::symlink_metadata(anc) {
+            Ok(meta) => {
+                if is_reparse_or_symlink(&meta) {
+                    return Err(format!(
+                        "refusing symlink or reparse point in {label} path: {}",
+                        anc.display()
+                    ));
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(e) => {
+                return Err(format!(
+                    "failed to stat {label} ancestor {}: {e}",
+                    anc.display()
+                ));
+            }
+        }
+    }
+    Ok(cleaned)
 }
 
 /// Read a regular file with an enforced upper byte bound using `Read::take(limit + 1)`,

@@ -2,34 +2,43 @@
 
 use crate::crw_packet::build_crw_packet;
 use crate::delta::{compute_delta, evaluate_budgets};
+use crate::ecosystem::model::EcosystemScanOptions;
+use crate::ecosystem::scan_ecosystem;
 use crate::graph_topology::{cap_topology_for_packet, export_graph_edges};
 use crate::model::{
     CHECK_REPORT_SCHEMA_VERSION, CheckReport, JsonlRecord, SNAPSHOT_SCHEMA_VERSION,
     SemanticBudgets, Snapshot,
 };
-use crate::safe_io::{is_reparse_or_symlink, read_file_bounded};
+use crate::safe_io::{
+    is_reparse_or_symlink, read_file_bounded, reject_reparse_or_symlink_ancestors,
+};
 use crate::scoring::top_hotspots;
 use crate::{ScanOptions, scan_repository};
 use std::fmt::Write as _;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 pub const MAX_SNAPSHOT_BYTES: u64 = 64 * 1024 * 1024;
+static NEXT_ATOMIC_TMP_ID: AtomicU64 = AtomicU64::new(0);
 
 const USAGE: &str = "\
 Usage:
   semantic-profiler check <repo-path> [--profile <path>] [--base <baseline.json>] [--window <N>] [--top <K>] [--json] [--output <path>] [--emit-crw-packet <path>] [--emit-graph-edges <path> | --graph-edges <path>] [--include-evals] [--require-profile]
   semantic-profiler scan <repo-path> [--window <N>] [--top <K>] [--profile <path>] [--output <path>] [--jsonl <path>] [--emit-crw-packet <path>] [--emit-graph-edges <path> | --graph-edges <path>] [--include-evals]
   semantic-profiler delta --base <base.json> --head <head.json> [--top <K>] [--output <path>] [--emit-crw-packet <path>] [--fail-on-budget]
+  semantic-profiler ecosystem (--workspace-root <dir> | --roots <dir1> [<dir2> ...]) [--output <json_path>] [--impact <repo_name>] [--fail-on-cycle] [--scan-repos]
 
 Subcommands:
-  check   Scan a repository, evaluate semantic-profile.json budgets (and optional --base delta),
-          print a human-readable or --json report, and exit 0 on pass, 2 on budget violation(s),
-          or 1 on CLI/runtime error.
-  scan    Analyze a repository and emit a portable JSON snapshot (plus optional JSONL,
-          CRW handoff packet, and typed graph-edges export).
-  delta   Compare two saved snapshots (--base and --head) for longitudinal drift and budgets.
+  check      Scan a repository, evaluate semantic-profile.json budgets (and optional --base delta),
+             print a human-readable or --json report, and exit 0 on pass, 2 on budget violation(s),
+             or 1 on CLI/runtime error.
+  scan       Analyze a repository and emit a portable JSON snapshot (plus optional JSONL,
+             CRW handoff packet, and typed graph-edges export).
+  delta      Compare two saved snapshots (--base and --head) for longitudinal drift and budgets.
+  ecosystem  Scan a collection of repositories to build a cross-repo dependency, pin-skew,
+             SCC cycle, and transitive blast-radius graph (exit 2 on cycle with --fail-on-cycle).
 ";
 
 struct CheckArgs {
@@ -67,6 +76,15 @@ struct DeltaArgs {
     fail_on_budget: bool,
 }
 
+struct EcosystemArgs {
+    workspace_root: Option<PathBuf>,
+    roots: Vec<PathBuf>,
+    output_path: Option<PathBuf>,
+    impact: Option<String>,
+    fail_on_cycle: bool,
+    scan_repos: bool,
+}
+
 pub fn run<I, S>(argv: I) -> Result<i32, String>
 where
     I: IntoIterator<Item = S>,
@@ -85,6 +103,7 @@ where
         "check" => run_check(&args[2..]),
         "scan" => run_scan(&args[2..]),
         "delta" => run_delta(&args[2..]),
+        "ecosystem" => run_ecosystem(&args[2..]),
         other => Err(format!("unknown subcommand '{other}'\n{USAGE}")),
     }
 }
@@ -680,6 +699,125 @@ fn run_delta(args: &[String]) -> Result<i32, String> {
     Ok(0)
 }
 
+fn take_string_value(args: &[String], i: &mut usize, flag: &str) -> Result<String, String> {
+    *i += 1;
+    let raw = args
+        .get(*i)
+        .ok_or_else(|| format!("{flag} requires a value"))?;
+    if raw.starts_with('-') {
+        return Err(format!(
+            "{flag} requires a value, got option-like token '{raw}'"
+        ));
+    }
+    *i += 1;
+    Ok(raw.clone())
+}
+
+fn parse_ecosystem_args(args: &[String]) -> Result<Option<EcosystemArgs>, String> {
+    let mut workspace_root: Option<PathBuf> = None;
+    let mut roots: Vec<PathBuf> = Vec::new();
+    let mut output_path: Option<PathBuf> = None;
+    let mut impact: Option<String> = None;
+    let mut fail_on_cycle = false;
+    let mut scan_repos = false;
+
+    let mut i = 0usize;
+    while i < args.len() {
+        match args[i].as_str() {
+            "-h" | "--help" => {
+                print!("{USAGE}");
+                return Ok(None);
+            }
+            "--workspace-root" => {
+                let v = take_path_value(args, &mut i, "--workspace-root")?;
+                set_once(&mut workspace_root, v, "--workspace-root")?;
+            }
+            "--roots" => {
+                i += 1;
+                let start = i;
+                while let Some(tok) = args.get(i) {
+                    if tok.starts_with('-') {
+                        break;
+                    }
+                    roots.push(PathBuf::from(tok));
+                    i += 1;
+                }
+                if i == start {
+                    return Err(format!("--roots requires at least one directory\n{USAGE}"));
+                }
+            }
+            "--output" => {
+                let v = take_path_value(args, &mut i, "--output")?;
+                set_once(&mut output_path, v, "--output")?;
+            }
+            "--impact" => {
+                let v = take_string_value(args, &mut i, "--impact")?;
+                set_once(&mut impact, v, "--impact")?;
+            }
+            "--fail-on-cycle" => {
+                fail_on_cycle = true;
+                i += 1;
+            }
+            "--scan-repos" => {
+                scan_repos = true;
+                i += 1;
+            }
+            other => {
+                return Err(format!("unknown option for ecosystem: {other}\n{USAGE}"));
+            }
+        }
+    }
+
+    if workspace_root.is_none() && roots.is_empty() {
+        return Err(format!(
+            "ecosystem requires --workspace-root <dir> and/or --roots <dir>...\n{USAGE}"
+        ));
+    }
+
+    Ok(Some(EcosystemArgs {
+        workspace_root,
+        roots,
+        output_path,
+        impact,
+        fail_on_cycle,
+        scan_repos,
+    }))
+}
+
+fn run_ecosystem(args: &[String]) -> Result<i32, String> {
+    let Some(cfg) = parse_ecosystem_args(args)? else {
+        return Ok(0);
+    };
+
+    let options = EcosystemScanOptions {
+        workspace_root: cfg.workspace_root,
+        roots: cfg.roots,
+        scan_repos: cfg.scan_repos,
+        impact_target: cfg.impact,
+    };
+    let graph = scan_ecosystem(&options)?;
+    let rendered = serde_json::to_string_pretty(&graph)
+        .map_err(|e| format!("failed to serialize ecosystem graph: {e}"))?;
+
+    if let Some(opath) = &cfg.output_path {
+        write_text(opath, &(rendered + "\n"))?;
+    } else {
+        println!("{rendered}");
+    }
+
+    if cfg.fail_on_cycle && !graph.sccs.is_empty() {
+        eprintln!(
+            "ecosystem cycle check failed ({} repo-level SCC(s)):",
+            graph.sccs.len()
+        );
+        for scc in &graph.sccs {
+            eprintln!("  - {}: {}", scc.id, scc.repos.join(" <-> "));
+        }
+        return Ok(2);
+    }
+    Ok(0)
+}
+
 fn read_snapshot(path: &Path) -> Result<Snapshot, String> {
     let sym_meta = fs::symlink_metadata(path)
         .map_err(|e| format!("failed to stat snapshot {}: {e}", path.display()))?;
@@ -698,42 +836,69 @@ fn read_snapshot(path: &Path) -> Result<Snapshot, String> {
         .map_err(|e| format!("invalid snapshot JSON {}: {e}", path.display()))
 }
 
-fn ensure_safe_output_path(path: &Path) -> Result<(), String> {
-    match fs::symlink_metadata(path) {
+fn ensure_safe_output_path(path: &Path) -> Result<PathBuf, String> {
+    let cleaned = reject_reparse_or_symlink_ancestors(path, "output")?;
+    match fs::symlink_metadata(&cleaned) {
         Ok(meta) => {
             if is_reparse_or_symlink(&meta) {
                 return Err(format!(
                     "refusing to write to symlink or reparse point: {}",
-                    path.display()
+                    cleaned.display()
                 ));
             }
             if !meta.is_file() {
                 return Err(format!(
                     "refusing to write to non-regular file: {}",
-                    path.display()
+                    cleaned.display()
                 ));
             }
-            Ok(())
+            Ok(cleaned)
         }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(e) => Err(format!("failed to stat output {}: {e}", path.display())),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(cleaned),
+        Err(e) => Err(format!("failed to stat output {}: {e}", cleaned.display())),
     }
 }
 
 fn write_text(path: &Path, text: &str) -> Result<(), String> {
-    ensure_safe_output_path(path)?;
-    if let Some(parent) = path.parent()
-        && !parent.as_os_str().is_empty()
-    {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("failed to create directory {}: {e}", parent.display()))?;
+    let cleaned = ensure_safe_output_path(path)?;
+    let parent = match cleaned.parent() {
+        Some(p) if !p.as_os_str().is_empty() => {
+            fs::create_dir_all(p)
+                .map_err(|e| format!("failed to create directory {}: {e}", p.display()))?;
+            p
+        }
+        _ => Path::new("."),
+    };
+    let file_name = cleaned
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("output");
+    let seq = NEXT_ATOMIC_TMP_ID.fetch_add(1, Ordering::Relaxed);
+    let tmp_path = parent.join(format!(
+        ".{file_name}.tmp.{}.{seq}",
+        std::process::id()
+    ));
+    let mut handle = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&tmp_path)
+        .map_err(|e| format!("failed to create temp file {}: {e}", tmp_path.display()))?;
+    if let Err(e) = handle.write_all(text.as_bytes()).and_then(|()| handle.sync_all()) {
+        drop(handle);
+        let _ = fs::remove_file(&tmp_path);
+        return Err(format!("failed to write {}: {e}", cleaned.display()));
     }
-    fs::write(path, text).map_err(|e| format!("failed to write {}: {e}", path.display()))
+    drop(handle);
+    if let Err(e) = fs::rename(&tmp_path, &cleaned) {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(format!("failed to finalize {}: {e}", cleaned.display()));
+    }
+    Ok(())
 }
 
 fn append_line(path: &Path, line: &str) -> Result<(), String> {
-    ensure_safe_output_path(path)?;
-    if let Some(parent) = path.parent()
+    let cleaned = ensure_safe_output_path(path)?;
+    if let Some(parent) = cleaned.parent()
         && !parent.as_os_str().is_empty()
     {
         fs::create_dir_all(parent)
@@ -742,7 +907,7 @@ fn append_line(path: &Path, line: &str) -> Result<(), String> {
     let mut handle = OpenOptions::new()
         .create(true)
         .append(true)
-        .open(path)
-        .map_err(|e| format!("failed to open jsonl {}: {e}", path.display()))?;
+        .open(&cleaned)
+        .map_err(|e| format!("failed to open jsonl {}: {e}", cleaned.display()))?;
     writeln!(handle, "{line}").map_err(|e| format!("failed to append jsonl: {e}"))
 }

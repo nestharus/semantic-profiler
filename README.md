@@ -63,6 +63,18 @@ semantic-profiler delta --base <base.json> --head <head.json> [--top <K>] [--out
 - Computes per-file LOC, token, function length, nesting depth, suppression, and hotspot score deltas alongside topology deltas (`scc_count_delta`, `bypass_count_delta`, `smeared_write_count_delta`, `phantom_coupling_count_delta`).
 - With `--fail-on-budget`, exits `2` when configured budgets in the head snapshot are exceeded.
 
+### `ecosystem` (Cross-Repo Dependency, Pin-Skew, and Blast-Radius Graph)
+
+```text
+semantic-profiler ecosystem (--workspace-root <dir> | --roots <dir1> [<dir2> ...]) [--output <json_path>] [--impact <repo_name>] [--fail-on-cycle] [--scan-repos]
+```
+
+- Discovers repositories across `--workspace-root <dir>` (supporting both `<name>/` and `<name>/trunk` layouts) and/or explicit `--roots <dir1> <dir2> ...`, rejecting symlink/reparse points safely.
+- Extracts per-repo git HEAD/branch/remote metadata, detected ecosystems (`rust`, `python`, `domain`), published crates/packages/domain IDs, and optional semantic-health rollups from `semantic-baseline.json` (or live AST scans when `--scan-repos` is passed).
+- Resolves cross-repo dependencies from `Cargo.toml` (`[dependencies]`, `[dev-dependencies]`, `[build-dependencies]`, `[workspace.dependencies]` git & relative path refs) + `Cargo.lock` resolved commit SHAs, `pyproject.toml` (`[project].dependencies`, `optional-dependencies`, `dependency-groups`, Poetry tables), and `domain.json` (`requires_domains`).
+- Detects repo-level dependency cycles via iterative Tarjan SCC (`--fail-on-cycle` exits `2` when any repo-level SCC exists), flags `pin_skew` when a pinned/locked SHA diverges from the target repository's actual git HEAD, and computes per-repo `fan_in`, `fan_out`, transitive dependents, and shortest-path `--impact <repo_name>` blast-radius reports.
+- Emits deterministic canonical JSON (`format: "semantic-ecosystem-graph/1"`) to stdout or atomically to `--output <json_path>`.
+
 ## Configuration (`semantic-profile.json`)
 
 Validate your repository's `semantic-profile.json` against the Draft 2020-12 JSON Schema in [`schemas/semantic-profile.schema.json`](schemas/semantic-profile.schema.json). Unknown fields are rejected strictly (`additionalProperties: false`).
@@ -155,7 +167,8 @@ Static scores and topology counts are challengeable Layer 1 signals, not automat
 
 ## Architecture
 
-- `cli`: command-line parsing and subcommand dispatch (`check`, `scan`, `delta`).
+- `cli`: command-line parsing and subcommand dispatch (`check`, `scan`, `delta`, `ecosystem`).
+- `ecosystem`: cross-repo manifest/lockfile parsing (`manifests`), portable ecosystem graph schemas (`model`), Tarjan SCC and blast-radius analysis (`topology`), and workspace discovery/pin-skew orchestration (`mod`).
 - `profile_config`: `semantic-profile.json` loading, validation, stratum classification, and linear-time glob matching.
 - `safe_io`: zero-fan-out leaf utility for symlink/reparse-point rejection and bounded file reads.
 - `discovery`: bounded directory walk, language classification, and production vs. test/eval role separation.
