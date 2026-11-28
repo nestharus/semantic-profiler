@@ -74,24 +74,24 @@ runs:
           PY_BIN="python3"
         fi
         "${PY_BIN}" - "${ACTION_PATH}" "${GITHUB_OUTPUT}" <<'PY'
-import hashlib, pathlib, sys
+        import hashlib, pathlib, sys
 
-root = pathlib.Path(sys.argv[1])
-gh_out = sys.argv[2]
-files = [root / "Cargo.toml", root / "Cargo.lock"]
-files.extend(sorted((root / "src").rglob("*.rs")))
+        root = pathlib.Path(sys.argv[1])
+        gh_out = sys.argv[2]
+        files = [root / "Cargo.toml", root / "Cargo.lock"]
+        files.extend(sorted((root / "src").rglob("*.rs")))
 
-digest = hashlib.sha256()
-for path in files:
-    rel = path.relative_to(root).as_posix().encode("utf-8")
-    digest.update(rel)
-    digest.update(b"\0")
-    digest.update(path.read_bytes())
-    digest.update(b"\0")
+        digest = hashlib.sha256()
+        for path in files:
+            rel = path.relative_to(root).as_posix().encode("utf-8")
+            digest.update(rel)
+            digest.update(b"\0")
+            digest.update(path.read_bytes())
+            digest.update(b"\0")
 
-with open(gh_out, "a", encoding="utf-8") as out:
-    out.write(f"hash={digest.hexdigest()}\n")
-PY
+        with open(gh_out, "a", encoding="utf-8") as out:
+            out.write(f"hash={digest.hexdigest()}\n")
+        PY
 
     - name: Cache semantic-profiler build
       uses: actions/cache@v4
@@ -169,31 +169,31 @@ PY
             PY_BIN="python3"
           fi
           "${PY_BIN}" - "${REPORT_PATH}" "${GITHUB_OUTPUT}" <<'PY'
-import json, sys
+        import json, sys
 
-report_path, gh_out = sys.argv[1], sys.argv[2]
-with open(report_path, "r", encoding="utf-8") as fh:
-    r = json.load(fh)
+        report_path, gh_out = sys.argv[1], sys.argv[2]
+        with open(report_path, "r", encoding="utf-8") as fh:
+            r = json.load(fh)
 
-status = "PASS" if r["passed"] else "FAIL"
-viols = r.get("budget_violations", [])
-s = r["summary"]
-print(f"semantic-profiler check: {status} ({len(viols)} budget violation(s))")
-print(f"  repo: {r['repo_label']} | prod_files={s['prod_files']} prod_loc={s['prod_loc']} top_hotspot={s['top_hotspot_score']:.2f}")
-print(f"  topology: sccs={s['scc_count']} bypasses={s['bypass_count']} smeared_writes={s['smeared_write_count']} phantoms={s['phantom_coupling_count']} blanket_suppressions={s['blanket_suppressions']}")
-for w in r.get("warnings", []):
-    print(f"  warning: {w}")
-for v in viols:
-    print(f"  violation: {v['rule']} on {v['target']}: {v['actual']} > {v['limit']}")
+        status = "PASS" if r["passed"] else "FAIL"
+        viols = r.get("budget_violations", [])
+        s = r["summary"]
+        print(f"semantic-profiler check: {status} ({len(viols)} budget violation(s))")
+        print(f"  repo: {r['repo_label']} | prod_files={s['prod_files']} prod_loc={s['prod_loc']} top_hotspot={s['top_hotspot_score']:.2f}")
+        print(f"  topology: sccs={s['scc_count']} bypasses={s['bypass_count']} smeared_writes={s['smeared_write_count']} phantoms={s['phantom_coupling_count']} blanket_suppressions={s['blanket_suppressions']}")
+        for w in r.get("warnings", []):
+            print(f"  warning: {w}")
+        for v in viols:
+            print(f"  violation: {v['rule']} on {v['target']}: {v['actual']} > {v['limit']}")
 
-with open(gh_out, "a", encoding="utf-8") as out:
-    out.write(f"passed={'true' if r['passed'] else 'false'}\n")
-    out.write(f"violation_count={len(viols)}\n")
-    out.write(f"scc_count={s['scc_count']}\n")
-    out.write(f"bypass_count={s['bypass_count']}\n")
-    out.write(f"smeared_write_count={s['smeared_write_count']}\n")
-    out.write(f"report_path={report_path}\n")
-PY
+        with open(gh_out, "a", encoding="utf-8") as out:
+            out.write(f"passed={'true' if r['passed'] else 'false'}\n")
+            out.write(f"violation_count={len(viols)}\n")
+            out.write(f"scc_count={s['scc_count']}\n")
+            out.write(f"bypass_count={s['bypass_count']}\n")
+            out.write(f"smeared_write_count={s['smeared_write_count']}\n")
+            out.write(f"report_path={report_path}\n")
+        PY
         else
           echo "passed=false" >> "${GITHUB_OUTPUT}"
           echo "violation_count=0" >> "${GITHUB_OUTPUT}"
