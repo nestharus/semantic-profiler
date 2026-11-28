@@ -166,7 +166,7 @@ impl WalkCtx<'_> {
             let rel = rel_posix(self.root, &path);
 
             if meta.is_dir() {
-                if SKIPPED_DIRS.contains(&name) {
+                if SKIPPED_DIRS.contains(&name) || path.join("pyvenv.cfg").is_file() {
                     continue;
                 }
                 if !self.include_evals && (lower_name == "evals" || lower_name == "eval") {

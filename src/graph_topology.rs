@@ -190,18 +190,19 @@ fn resolve_import_path(
 
     if explicit_module_rel {
         let mut base = current_module_dir_segments(src_rel_path, scope);
+        let min_len = base.len() + 1;
         for s in &segs {
             base.push((*s).to_string());
         }
         let refs: Vec<&str> = base.iter().map(String::as_str).collect();
-        if let Some(hit) = longest_prefix_match(scope, &refs, scoped_path_map) {
+        if let Some(hit) = longest_prefix_match_with_min(scope, &refs, min_len, scoped_path_map) {
             return Some(hit);
         }
         return longest_prefix_match(scope, &segs, scoped_path_map);
     }
 
-    let resolved_segs: Vec<String> = match segs[0] {
-        "crate" => segs[1..].iter().map(|s| (*s).to_string()).collect(),
+    let (resolved_segs, min_len): (Vec<String>, usize) = match segs[0] {
+        "crate" => (segs[1..].iter().map(|s| (*s).to_string()).collect(), 1),
         "super" | "self" => {
             // Exact Rust module-path semantics:
             //   `src/lib.rs`         -> []
@@ -218,7 +219,7 @@ fn resolve_import_path(
                     other => base.push(other.to_string()),
                 }
             }
-            base
+            (base, 1)
         }
         ".." => {
             let mut base = current_module_dir_segments(src_rel_path, scope);
@@ -230,23 +231,26 @@ fn resolve_import_path(
             for s in &segs[idx..] {
                 base.push((*s).to_string());
             }
-            base
+            (base, 1)
         }
         _ => {
-            // Try direct scope-relative match first; if not found, try relative to current directory.
+            // Try direct scope-relative match first; if not found, try relative to current directory
+            // requiring at least one imported segment to match so unresolved stdlib/external imports
+            // never collapse onto the enclosing package's `__init__.py` / `mod.rs` / `index.ts`.
             if let Some(hit) = longest_prefix_match(scope, &segs, scoped_path_map) {
                 return Some(hit);
             }
             let mut base = current_module_dir_segments(src_rel_path, scope);
+            let min_len = base.len() + 1;
             for s in &segs {
                 base.push((*s).to_string());
             }
-            base
+            (base, min_len)
         }
     };
 
     let refs: Vec<&str> = resolved_segs.iter().map(String::as_str).collect();
-    longest_prefix_match(scope, &refs, scoped_path_map)
+    longest_prefix_match_with_min(scope, &refs, min_len, scoped_path_map)
 }
 
 fn fallback_stem_from_path(raw_path: &str) -> Option<String> {
@@ -275,7 +279,20 @@ fn longest_prefix_match(
     segs: &[&str],
     scoped_path_map: &BTreeMap<(String, String), Vec<usize>>,
 ) -> Option<Vec<usize>> {
-    for len in (1..=segs.len()).rev() {
+    longest_prefix_match_with_min(scope, segs, 1, scoped_path_map)
+}
+
+fn longest_prefix_match_with_min(
+    scope: &str,
+    segs: &[&str],
+    min_len: usize,
+    scoped_path_map: &BTreeMap<(String, String), Vec<usize>>,
+) -> Option<Vec<usize>> {
+    let floor = min_len.max(1);
+    if segs.len() < floor {
+        return None;
+    }
+    for len in (floor..=segs.len()).rev() {
         let candidate = segs[..len].join("/");
         if let Some(targets) = scoped_path_map.get(&(scope.to_string(), candidate)) {
             return Some(targets.clone());
@@ -1181,6 +1198,17 @@ fn package_scope(rel_path: &str) -> String {
     String::new()
 }
 
+fn is_directory_index_file(p: &Path) -> bool {
+    let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+    let ext = p.extension().and_then(|s| s.to_str()).unwrap_or("");
+    matches!(
+        (stem, ext),
+        ("mod", "rs")
+            | ("__init__", "py")
+            | ("index", "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs")
+    )
+}
+
 fn module_path_keys(rel_path: &str, scope: &str) -> Vec<String> {
     let trimmed = if !scope.is_empty()
         && let Some(rest) = rel_path.strip_prefix(scope)
@@ -1193,7 +1221,7 @@ fn module_path_keys(rel_path: &str, scope: &str) -> Vec<String> {
     let p = Path::new(trimmed);
     let mut keys = Vec::new();
     let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-    if stem == "mod" || stem == "__init__" || stem == "index" {
+    if is_directory_index_file(p) {
         if let Some(parent) = p.parent() {
             let s = parent.to_string_lossy().replace('\\', "/");
             if !s.is_empty() {
@@ -1216,7 +1244,7 @@ pub fn module_keys(rel_path: &str) -> Vec<String> {
     let p = Path::new(rel_path);
     let mut keys = Vec::new();
     if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
-        if stem == "mod" || stem == "__init__" || stem == "index" {
+        if is_directory_index_file(p) {
             if let Some(parent_name) = p.parent().and_then(|d| d.file_name()).and_then(|s| s.to_str())
             {
                 keys.push(parent_name.to_string());

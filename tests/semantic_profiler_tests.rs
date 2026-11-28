@@ -2556,3 +2556,122 @@ fn python_pep701_fstrings_tstrings_raw_escapes_nested_lambda_and_eof_resilience(
     assert_eq!(trunc.functions.len(), 1);
     assert_eq!(trunc.functions[0].name, "truncated_sig");
 }
+
+#[test]
+fn python_stdlib_imports_and_index_py_do_not_create_false_sccs() {
+    let tmp = TempDir::new("py-stdlib-and-index");
+    let pkg = tmp.path().join("src/my_pkg/companions");
+    let lib = tmp.path().join("src/my_pkg/library");
+    let web = tmp.path().join("web/components");
+    fs::create_dir_all(&pkg).unwrap();
+    fs::create_dir_all(&lib).unwrap();
+    fs::create_dir_all(&web).unwrap();
+
+    // Package __init__.py re-exports leaf contracts.py, which only imports Python stdlib.
+    fs::write(
+        pkg.join("__init__.py"),
+        "from .contracts import ServiceProtocol\n__all__ = ['ServiceProtocol']\n",
+    )
+    .unwrap();
+    fs::write(
+        pkg.join("contracts.py"),
+        "from pathlib import Path\nfrom typing import Protocol\n\nclass ServiceProtocol(Protocol):\n    def read(self, p: Path) -> str: ...\n",
+    )
+    .unwrap();
+
+    // Python package with both __init__.py and a regular module named index.py;
+    // index.py imports config.py, while config.py only imports stdlib (os, pathlib).
+    fs::write(
+        lib.join("__init__.py"),
+        "from .index import SearchIndex\n__all__ = ['SearchIndex']\n",
+    )
+    .unwrap();
+    fs::write(
+        lib.join("config.py"),
+        "import os\nfrom pathlib import Path\n\ndef default_root() -> Path:\n    return Path(os.getcwd())\n",
+    )
+    .unwrap();
+    fs::write(
+        lib.join("index.py"),
+        "from .config import default_root\n\nclass SearchIndex:\n    def root(self):\n        return default_root()\n",
+    )
+    .unwrap();
+
+    // JS/TS directory index.ts must still resolve as a package entrypoint.
+    fs::write(web.join("index.ts"), "export const Widget = 1;\n").unwrap();
+    fs::write(
+        tmp.path().join("web/app.ts"),
+        "import { Widget } from './components';\nexport const x = Widget;\n",
+    )
+    .unwrap();
+
+    // Non-standard Python virtualenv directories (PEP 405 pyvenv.cfg, e.g. .venv2) must be skipped.
+    let venv2 = tmp.path().join(".venv2/Lib/site-packages/third_party");
+    fs::create_dir_all(&venv2).unwrap();
+    fs::write(tmp.path().join(".venv2/pyvenv.cfg"), "home = /usr/bin\n").unwrap();
+    fs::write(venv2.join("a.py"), "from .b import B\n").unwrap();
+    fs::write(venv2.join("b.py"), "from .a import A\n").unwrap();
+
+    let snap = scan_repository(
+        tmp.path(),
+        &ScanOptions {
+            git_window: 0,
+            ..Default::default()
+        },
+    )
+    .expect("scan python stdlib and index.py");
+
+    assert!(
+        snap.topology.sccs.is_empty(),
+        "stdlib imports and Python index.py must not produce false SCCs: {:?}",
+        snap.topology.sccs
+    );
+
+    let edges = export_graph_edges(&snap);
+    let import_edges: Vec<(&str, &str)> = edges
+        .edges
+        .iter()
+        .filter(|e| e.kind == "imports")
+        .map(|e| (e.from.as_str(), e.to.as_str()))
+        .collect();
+
+    assert!(
+        import_edges.contains(&(
+            "src/my_pkg/companions/__init__.py",
+            "src/my_pkg/companions/contracts.py"
+        )),
+        "expected __init__.py -> contracts.py, got {import_edges:?}"
+    );
+    assert!(
+        !import_edges.contains(&(
+            "src/my_pkg/companions/contracts.py",
+            "src/my_pkg/companions/__init__.py"
+        )),
+        "stdlib imports must not fabricate contracts.py -> __init__.py: {import_edges:?}"
+    );
+    assert!(
+        import_edges.contains(&(
+            "src/my_pkg/library/index.py",
+            "src/my_pkg/library/config.py"
+        )),
+        "expected library/index.py -> library/config.py, got {import_edges:?}"
+    );
+    assert!(
+        !import_edges.contains(&(
+            "src/my_pkg/library/config.py",
+            "src/my_pkg/library/index.py"
+        )),
+        "Python index.py must not alias directory and fabricate config.py -> index.py: {import_edges:?}"
+    );
+    assert!(
+        !import_edges.contains(&(
+            "src/my_pkg/library/config.py",
+            "src/my_pkg/library/__init__.py"
+        )),
+        "stdlib imports must not fabricate config.py -> __init__.py: {import_edges:?}"
+    );
+    assert!(
+        import_edges.contains(&("web/app.ts", "web/components/index.ts")),
+        "TypeScript directory index.ts resolution must be preserved: {import_edges:?}"
+    );
+}
