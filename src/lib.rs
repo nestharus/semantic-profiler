@@ -58,96 +58,49 @@ pub fn scan_repository(repo_root: &Path, options: &ScanOptions) -> Result<Snapsh
         .iter()
         .map(|f| f.rel_path.clone())
         .collect();
-    let git = collect_git_history(repo_root, options.git_window, &known_files);
+
+    // Overlap git history collection with bounded parallel AST parsing while preserving exact deterministic order.
+    let worker_count = std::thread::available_parallelism()
+        .map(|n| n.get().clamp(1, 4))
+        .unwrap_or(2);
+    let (git, analyzed_slots): (
+        git_history::GitHistoryMetrics,
+        Vec<Result<FileProfile, SkippedFile>>,
+    ) = std::thread::scope(|scope| {
+        let git_handle = scope.spawn(|| collect_git_history(repo_root, options.git_window, &known_files));
+
+        let files = &discovered.files;
+        let slots: Vec<Result<FileProfile, SkippedFile>> = if files.len() < 16 || worker_count <= 1 {
+            files.iter().map(analyze_discovered_file).collect()
+        } else {
+            let chunk_size = files.len().div_ceil(worker_count);
+            let mut handles = Vec::with_capacity(worker_count);
+            for chunk in files.chunks(chunk_size) {
+                handles.push(scope.spawn(move || {
+                    chunk.iter().map(analyze_discovered_file).collect::<Vec<_>>()
+                }));
+            }
+            let mut merged = Vec::with_capacity(files.len());
+            for h in handles {
+                merged.extend(h.join().expect("analyzer worker panicked"));
+            }
+            merged
+        };
+
+        let git_metrics = git_handle.join().expect("git history worker panicked");
+        (git_metrics, slots)
+    });
 
     let mut profiles: Vec<FileProfile> = Vec::with_capacity(discovered.files.len());
-    for df in &discovered.files {
-        let bytes = match read_file_bounded(&df.abs_path, MAX_SOURCE_BYTES) {
-            Ok(b) => b,
-            Err(e) => {
-                discovered.skipped.push(SkippedFile {
-                    path: df.rel_path.clone(),
-                    reason: e,
-                });
-                continue;
+    for slot in analyzed_slots {
+        match slot {
+            Ok(mut fp) => {
+                fp.churn_commits = git.churn_by_file.get(&fp.path).copied().unwrap_or(0);
+                fp.co_change_partners = git.partners_by_file.get(&fp.path).copied().unwrap_or(0);
+                profiles.push(fp);
             }
-        };
-        let Ok(raw_source) = String::from_utf8(bytes) else {
-            discovered.skipped.push(SkippedFile {
-                path: df.rel_path.clone(),
-                reason: "non-UTF-8 file skipped".to_string(),
-            });
-            continue;
-        };
-
-        let sha256 = sha256_hex(raw_source.as_bytes());
-        let source = raw_source.strip_prefix('\u{feff}').unwrap_or(&raw_source);
-        let is_test_or_eval = df.role != FileRole::Production;
-        let analyzed = match df.language {
-            Language::Rust => analyze_rust_source(source, is_test_or_eval).unwrap_or_else(|| {
-                analyze_text_source(source, Language::Rust, is_test_or_eval, true)
-            }),
-            other => analyze_text_source(source, other, is_test_or_eval, false),
-        };
-
-        let mut max_fn_loc = 0usize;
-        let mut max_fn_name: Option<String> = None;
-        let mut max_nesting_depth = 0usize;
-        let mut max_param_count = 0usize;
-
-        for f in &analyzed.functions {
-            if f.loc > max_fn_loc {
-                max_fn_loc = f.loc;
-                max_fn_name = Some(f.name.clone());
-            }
-            if f.max_nesting_depth > max_nesting_depth {
-                max_nesting_depth = f.max_nesting_depth;
-            }
-            if f.param_count > max_param_count {
-                max_param_count = f.param_count;
-            }
+            Err(skip) => discovered.skipped.push(skip),
         }
-
-        let churn_commits = git.churn_by_file.get(&df.rel_path).copied().unwrap_or(0);
-        let co_change_partners = git.partners_by_file.get(&df.rel_path).copied().unwrap_or(0);
-
-        profiles.push(FileProfile {
-            path: df.rel_path.clone(),
-            language: df.language,
-            role: df.role,
-            classification: analyzed.detected_classification,
-            sha256,
-            total_loc: analyzed.total_loc,
-            prod_loc: analyzed.prod_loc,
-            inline_test_loc: analyzed.inline_test_loc,
-            est_tokens: analyzed.est_tokens,
-            function_count: analyzed.functions.len(),
-            max_fn_loc,
-            max_fn_name,
-            max_nesting_depth,
-            max_param_count,
-            functions: analyzed.functions,
-            suppressions: analyzed.suppressions,
-            internal_imports: analyzed.internal_imports,
-            import_paths: analyzed.import_paths,
-            mod_decl_paths: analyzed.mod_decl_paths,
-            reach_ins: analyzed.reach_ins,
-            write_targets: analyzed.write_targets,
-            layer: None,
-            topology_role: String::new(),
-            fan_in: 0,
-            fan_out: 0,
-            nexus_score: 0,
-            transitive_dependents: 0,
-            transitive_dependent_tokens: 0,
-            churn_commits,
-            co_change_partners,
-            dampening_factor: 1.0,
-            dampening_reason: None,
-            raw_hotspot_score: 0.0,
-            hotspot_score: 0.0,
-            parse_fallback: analyzed.parse_fallback,
-        });
     }
 
     let graph = build_import_graph(&profiles);
@@ -179,6 +132,84 @@ pub fn scan_repository(repo_root: &Path, options: &ScanOptions) -> Result<Snapsh
         files: profiles,
         co_change_pairs: git.co_change_pairs,
         skipped_files: discovered.skipped,
+    })
+}
+
+fn analyze_discovered_file(df: &discovery::DiscoveredFile) -> Result<FileProfile, SkippedFile> {
+    let bytes = read_file_bounded(&df.abs_path, MAX_SOURCE_BYTES).map_err(|reason| SkippedFile {
+        path: df.rel_path.clone(),
+        reason,
+    })?;
+    let Ok(raw_source) = String::from_utf8(bytes) else {
+        return Err(SkippedFile {
+            path: df.rel_path.clone(),
+            reason: "non-UTF-8 file skipped".to_string(),
+        });
+    };
+
+    let sha256 = sha256_hex(raw_source.as_bytes());
+    let source = raw_source.strip_prefix('\u{feff}').unwrap_or(&raw_source);
+    let is_test_or_eval = df.role != FileRole::Production;
+    let analyzed = match df.language {
+        Language::Rust => analyze_rust_source(source, is_test_or_eval)
+            .unwrap_or_else(|| analyze_text_source(source, Language::Rust, is_test_or_eval, true)),
+        other => analyze_text_source(source, other, is_test_or_eval, false),
+    };
+
+    let mut max_fn_loc = 0usize;
+    let mut max_fn_name: Option<String> = None;
+    let mut max_nesting_depth = 0usize;
+    let mut max_param_count = 0usize;
+
+    for f in &analyzed.functions {
+        if f.loc > max_fn_loc {
+            max_fn_loc = f.loc;
+            max_fn_name = Some(f.name.clone());
+        }
+        if f.max_nesting_depth > max_nesting_depth {
+            max_nesting_depth = f.max_nesting_depth;
+        }
+        if f.param_count > max_param_count {
+            max_param_count = f.param_count;
+        }
+    }
+
+    Ok(FileProfile {
+        path: df.rel_path.clone(),
+        language: df.language,
+        role: df.role,
+        classification: analyzed.detected_classification,
+        sha256,
+        total_loc: analyzed.total_loc,
+        prod_loc: analyzed.prod_loc,
+        inline_test_loc: analyzed.inline_test_loc,
+        est_tokens: analyzed.est_tokens,
+        function_count: analyzed.functions.len(),
+        max_fn_loc,
+        max_fn_name,
+        max_nesting_depth,
+        max_param_count,
+        functions: analyzed.functions,
+        suppressions: analyzed.suppressions,
+        internal_imports: analyzed.internal_imports,
+        import_paths: analyzed.import_paths,
+        mod_decl_paths: analyzed.mod_decl_paths,
+        reach_ins: analyzed.reach_ins,
+        write_targets: analyzed.write_targets,
+        layer: None,
+        topology_role: String::new(),
+        fan_in: 0,
+        fan_out: 0,
+        nexus_score: 0,
+        transitive_dependents: 0,
+        transitive_dependent_tokens: 0,
+        churn_commits: 0,
+        co_change_partners: 0,
+        dampening_factor: 1.0,
+        dampening_reason: None,
+        raw_hotspot_score: 0.0,
+        hotspot_score: 0.0,
+        parse_fallback: analyzed.parse_fallback,
     })
 }
 

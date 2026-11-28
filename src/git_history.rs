@@ -40,10 +40,12 @@ pub fn collect_git_history(
         return metrics;
     }
 
-    let Some(head) = run_git_capture(repo_root, &["rev-parse", "HEAD"]) else {
+    // Combine HEAD and subdirectory prefix into a single git spawn to avoid extra process overhead.
+    let Some(rev_out) = run_git_capture(repo_root, &["rev-parse", "HEAD", "--show-prefix"]) else {
         return metrics;
     };
-    let head = head.trim().to_string();
+    let mut rev_lines = rev_out.lines();
+    let head = rev_lines.next().unwrap_or("").trim().to_string();
     if head.is_empty() {
         return metrics;
     }
@@ -51,8 +53,8 @@ pub fn collect_git_history(
     metrics.available = true;
     metrics.head_commit = Some(head);
 
-    // Determine subdirectory prefix (empty at repo root, e.g. "tools/semantic-profiler/" in a subdir).
-    let prefix = run_git_capture(repo_root, &["rev-parse", "--show-prefix"])
+    let prefix = rev_lines
+        .next()
         .map(|s| s.trim().replace('\\', "/"))
         .unwrap_or_default();
 
